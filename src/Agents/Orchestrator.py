@@ -13,16 +13,15 @@ class Ochestrator:
         
     def is_legitimate(self, email : Email) -> bool:
         final_confidence_score = 0
-        token_usage = 0
         summary = []
         highlights = []
+        email_ident = email.get_ident()
 
         for (idx, agent) in enumerate(self.agents):
             agent.evaluate(email)
-            final_confidence_score += agent.get_confidence() * weightage[idx]
-            token_usage += agent.get_token_usage
-            summary.append({agent.__class__(), agent.get_summary})
-            highlights.append({agent.__class__(), agent.get_highlight()})
+            final_confidence_score += agent.get_confidence(email_ident) * weightage[idx]
+            summary.append({agent.__class__(), agent.get_summary(email_ident)})
+            highlights.append({agent.__class__(), agent.get_highlight(email_ident)})
 
         if final_confidence_score <= self.bias:
             return True
