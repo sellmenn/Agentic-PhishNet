@@ -35,3 +35,21 @@ class Model:
         )
         e_obj.set_ident(ident=email.get_ident())
         self.evals.append(e_obj)
+
+    def get_e_obj(self, ident): 
+        for e in self.evals:
+            if e.get_ident() == ident:
+                return e
+        return None
+
+    def get_confidence(self, ident): 
+        return self.get_e_obj(ident).confidence
+
+    def get_summary(self, ident): 
+        return self.get_e_obj(ident).summary
+
+    def get_token_usage(self, ident): 
+        return self.get_e_obj(ident).token_usage
+    
+    def get_highlight(self, ident): 
+        return self.get_e_obj(ident).highlight
