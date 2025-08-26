@@ -1,8 +1,37 @@
 from Util.Email import Email
+from Util.Evaluation import Evaluation
+import json 
 
 class Model:
     def __init__(self):
         self.temp : float = 0
+        self.evals : list[Evaluation]
         
     def evaluate(self, email : Email):
-        raise NotImplementedError
+        """
+        {
+            "confidence_score": 1,
+            "summary": "",
+            "token_usage": 10,
+            "highlight": [
+                {
+                    "s_idx": 6,
+                    "e_idx": 18,
+                    "reasoning": "MEOWMEOW"
+                },{
+                    "s_idx": 6,
+                    "e_idx": 18,
+                    "reasoning": "MEOWMEOW"
+                }
+            ]
+        }
+        """
+        e = None # Model outputs evaluation as json -> e
+        e_obj = Evaluation(
+            confidence=e["confidence_score"],
+            summary=e["summary"],
+            token_usage=e["token_usage"],
+            highlight=e["highlight"]
+        )
+        e_obj.set_ident(ident=email.get_ident())
+        self.evals.append(e_obj)

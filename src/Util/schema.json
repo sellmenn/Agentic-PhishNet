@@ -1,7 +1,11 @@
 {
     "confidence_score": 1,
     "summary": "",
-    "token_usage": 10,
+    "token_usage": {
+        "prompt_tokens" : 0,
+        "completion_tokens" : 0,
+        "total_tokens" : 0
+    },
     "highlight": [
         {
             "s_idx": 6,
