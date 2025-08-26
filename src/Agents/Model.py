@@ -6,7 +6,8 @@ class Model:
     def __init__(self):
         self.temp : float = 0
         self.evals : list[Evaluation]
-        self.name : str = None
+        self.type : str = None
+        self.llm_wrapper = None # To be implemented !!
 
     def get_type(self) -> str:
         raise NotImplementedError("To be implemented in subclass.")
@@ -30,7 +31,7 @@ class Model:
             ]
         }
         """
-        e = None # Model outputs evaluation as json -> e
+        e = None # self.llm_wrapper outputs evaluation e : json
         e_obj = Evaluation(
             confidence=e["confidence_score"],
             summary=e["summary"],
