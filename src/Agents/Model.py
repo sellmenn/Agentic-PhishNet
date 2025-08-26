@@ -7,7 +7,7 @@ class Model:
         self.temp : float = 0
         self.evals : list[Evaluation]
         
-    def evaluate(self, email : Email):
+    def evaluate(self, email : Email) -> None:
         """
         {
             "confidence_score": 1,
@@ -36,20 +36,20 @@ class Model:
         e_obj.set_ident(ident=email.get_ident())
         self.evals.append(e_obj)
 
-    def get_e_obj(self, ident): 
+    def get_e_obj(self, ident) -> Evaluation | None: 
         for e in self.evals:
             if e.get_ident() == ident:
                 return e
         return None
 
     def get_confidence(self, ident): 
-        return self.get_e_obj(ident).confidence
+        return self.get_e_obj(ident).get_confidence()
 
     def get_summary(self, ident): 
-        return self.get_e_obj(ident).summary
+        return self.get_e_obj(ident).get_summary()
 
     def get_token_usage(self, ident): 
-        return self.get_e_obj(ident).token_usage
+        return self.get_e_obj(ident).get_token_usage()
     
     def get_highlight(self, ident): 
-        return self.get_e_obj(ident).highlight
+        return self.get_e_obj(ident).get_highlight()

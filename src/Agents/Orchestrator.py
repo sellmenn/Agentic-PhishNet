@@ -1,7 +1,7 @@
 from Agents.FactModel import FactModel
 from Agents.LangModel import LangModel
 from Agents.Model import Model
-import Email
+from Util.Email import Email
 
 weightage = [0.5, 0.5]
 bias = 0.6
