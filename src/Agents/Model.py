@@ -6,6 +6,10 @@ class Model:
     def __init__(self):
         self.temp : float = 0
         self.evals : list[Evaluation]
+        self.name : str = None
+
+    def get_type(self) -> str:
+        raise NotImplementedError("To be implemented in subclass.")
         
     def evaluate(self, email : Email) -> None:
         """

@@ -9,7 +9,7 @@ class Ochestrator:
         self.weightage = weightage
         self.cutoff = cutoff
         self.bias = bias
-        self.agents = agents
+        self.agents : list[Model] = agents
         
     def is_legitimate(self, email : Email) -> bool:
         final_confidence_score = 0
@@ -19,10 +19,10 @@ class Ochestrator:
 
         for (idx, agent) in enumerate(self.agents):
             agent.evaluate(email)
-            final_confidence_score += agent.get_confidence_score * weightage[idx]
+            final_confidence_score += agent.get_confidence() * weightage[idx]
             token_usage += agent.get_token_usage
-            summary.append({agent.get_type(), agent.get_summary})
-            highlights.append({agent.get_type(), agent.get_highlight()})
+            summary.append({agent.__class__(), agent.get_summary})
+            highlights.append({agent.__class__(), agent.get_highlight()})
 
         if final_confidence_score <= self.bias:
             return True
