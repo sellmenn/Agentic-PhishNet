@@ -4,5 +4,5 @@ class Model:
     def __init__(self):
         self.temp : float = 0
         
-    def get_confidence_score(self, email : Email):
+    def evaluate(self, email : Email):
         raise NotImplementedError

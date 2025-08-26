@@ -1,0 +1,16 @@
+{
+    "confidence_score": 1,
+    "summary": "",
+    "token_usage": 10,
+    "highlight": [
+        {
+            "s_idx": 6,
+            "e_idx": 18,
+            "reasoning": "MEOWMEOW"
+        },{
+            "s_idx": 6,
+            "e_idx": 18,
+            "reasoning": "MEOWMEOW"
+        }
+    ]
+}
