@@ -1,5 +1,3 @@
-from Agents.FactModel import FactModel
-from Agents.LangModel import LangModel
 from Agents.Model import Model
 from Util.Email import Email
 
@@ -13,7 +11,7 @@ class Ochestrator:
         self.bias = bias
         self.agents = agents
         
-    def is_legitimate(self, email : Email):
+    def is_legitimate(self, email : Email) -> bool:
         final_confidence_score = 0
         token_usage = 0
         summary = []
