@@ -1,1 +1,3 @@
 .env
+src/phish-frontend/node_modules
+src/phish-frontend/.next

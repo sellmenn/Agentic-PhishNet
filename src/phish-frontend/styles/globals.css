@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: dark; }
+html, body, #__next { height: 100%; background: #0a0f1a; }
+.neon-border { box-shadow: 0 0 0 1px rgba(0,240,255,.25), inset 0 0 20px rgba(255,0,247,.05); }
+.glow { box-shadow: 0 0 10px rgba(0,240,255,.35), 0 0 30px rgba(255,0,247,.25); }
+.badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs; }
+.badge-green { @apply bg-emerald-900/40 text-emerald-300; }
+.badge-yellow { @apply bg-yellow-900/40 text-yellow-300; }
+.badge-red { @apply bg-red-900/40 text-red-300; }
+.chip { @apply px-3 py-1 rounded-full text-xs bg-panel border border-cyan-400/20 hover:border-cyan-300/40 cursor-pointer; }
+.gradient-bar { background: linear-gradient(90deg,#00F0FF,#ff00f7,#d6ff00); height:2px; }
