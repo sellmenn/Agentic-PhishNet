@@ -1,20 +1,29 @@
+from Agents.Model import Model
+
 class Evaluation:
     def __init__(
             self, 
             confidence : float,
             summary : str,
             token_usage : dict,
-            highlights : list
+            highlight : list
         ):
 
         self.ident = None
+        self.evaluator : Model = None
         self.confidence = confidence
         self.summary = summary
         self.token_usage = token_usage
-        self.highlight = highlights
+        self.highlight = highlight
 
     def set_ident(self, ident: str) -> None:
         self.ident = ident
+
+    def get_ident(self) -> str | None:
+        return self.ident
+
+    def set_evaluator(self, evaluator : Model):
+        self.evaluator = evaluator
 
     def get_confidence(self) -> float:
         return self.confidence

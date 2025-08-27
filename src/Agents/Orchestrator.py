@@ -1,17 +1,21 @@
 from Agents.Model import Model
 from Util.Email import Email
+from Util.Evaluation import Evaluation
 
+# Weightage given to each agent's evaluation
 weightage = [0.5, 0.5]
+
+cutoff = 0.8
 bias = 0.6
 
 class Ochestrator:
-    def __init__(self, weightage = [0.5, 0.5], cutoff = 0.4, bias = 0.6, agents : list[Model] = []):
+    def __init__(self, weightage = [0.5, 0.5], cutoff = 0.4, bias = 0.6, agents : tuple[Model] = ()):
         self.weightage = weightage
         self.cutoff = cutoff
         self.bias = bias
-        self.agents : list[Model] = agents
+        self.agents : tuple[Model] = agents
         
-    def evaluate_confidence(self, email : Email) -> dict:
+    def evaluate_email(self, email : Email) -> Evaluation:
         """
         Returns the following
         {
@@ -21,20 +25,33 @@ class Ochestrator:
         }
         """
         final_confidence_score = 0
-        summary = []
-        highlights = []
+        summary = ""
+        highlight = []
         email_ident = email.get_ident()
+        prompt_tokens, completion_tokens, total_tokens = 0, 0, 0
 
         for (idx, agent) in enumerate(self.agents):
             agent.evaluate(email)
             final_confidence_score += agent.get_confidence(email_ident) * weightage[idx]
-            summary.append({agent.__class__(), agent.get_summary(email_ident)})
-            highlights.append({agent.__class__(), agent.get_highlight(email_ident)})
+            summary += f"{agent.get_type()} : {agent.get_summary()}\n"
+            for h in agent.get_highlight(email_ident):
+                highlight.append(h)
+            agent_usage = agent.get_token_usage(email_ident)
+            prompt_tokens += agent_usage["prompt_tokens"]
+            completion_tokens += agent_usage["completion_tokens"]
+            total_tokens += agent_usage["total_tokens"]
 
-        context = {
-            "confidence" : final_confidence_score,
-            "summary" : summary,
-            "highlights" : highlights
+        combined_usage = {
+            "prompt_tokens" : prompt_tokens,
+            "completion_tokens" : completion_tokens,
+            "total_tokens" : total_tokens
         }
 
-        return context
+        evaluation = Evaluation(
+            confidence=final_confidence_score,
+            summary=agent.get_summary(email_ident),
+            highlight=highlight,
+            token_usage=combined_usage
+        )
+
+        return evaluation
