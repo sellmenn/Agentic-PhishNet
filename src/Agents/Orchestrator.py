@@ -11,7 +11,15 @@ class Ochestrator:
         self.bias = bias
         self.agents : list[Model] = agents
         
-    def is_legitimate(self, email : Email) -> bool:
+    def evaluate_confidence(self, email : Email) -> dict:
+        """
+        Returns the following
+        {
+            "confidence" : final_confidence_score,
+            "summary" : summary,
+            "highlights" : highlights
+        }
+        """
         final_confidence_score = 0
         summary = []
         highlights = []
@@ -23,8 +31,10 @@ class Ochestrator:
             summary.append({agent.__class__(), agent.get_summary(email_ident)})
             highlights.append({agent.__class__(), agent.get_highlight(email_ident)})
 
-        if final_confidence_score <= self.bias:
-            return True
-        elif final_confidence_score >= self.cutoff:
-            return (summary, highlights)
-        return False
+        context = {
+            "confidence" : final_confidence_score,
+            "summary" : summary,
+            "highlights" : highlights
+        }
+
+        return context
