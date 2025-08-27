@@ -1,0 +1,35 @@
+import React, { useEffect, useRef, useState } from 'react'
+
+export default function HoverSidebar({ pulse }){
+  const [open, setOpen] = useState(false)
+  const timer = useRef(null)
+
+  useEffect(()=>{
+    if(!pulse) return
+    setOpen(true)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(()=> setOpen(false), 1200)
+  }, [pulse])
+
+  const items = ['Inbox','Starred','Snoozed','Sent','Drafts','Spam / Junk']
+
+  return (
+    <div className="fixed left-0 top-[64px] z-10">
+      <div className="h-[calc(100vh-64px)] w-2 side-rail opacity-60 cursor-ew-resize" onMouseEnter={()=>setOpen(true)} />
+      <div onMouseLeave={()=>setOpen(false)} className={`absolute top-0 left-0 h-[calc(100vh-64px)] w-72 pill rounded-r-2xl p-4 space-y-2 transform transition-transform duration-300 ${open? 'translate-x-2':'-translate-x-full'}`}>
+        <div className="text-xs uppercase text-dim tracking-wider mb-2">Mailboxes</div>
+        {items.map(x=> (
+          <div key={x} className="flex items-center gap-3 px-3 py-2 rounded-xl hoverable cursor-pointer">
+            <div className="w-5 h-5 rounded-md glass border border-line" />
+            <span className={`text-sm ${x.includes('Spam')? 'text-red-300':'text-ink/90'}`}>{x}</span>
+          </div>
+        ))}
+        <div className="divider my-3"></div>
+        <div className="text-xs uppercase text-dim tracking-wider mb-2">Labels</div>
+        <div className="grid grid-cols-2 gap-2">
+          {['Finance','School','Hackathon','Vendors','Security','Family'].map(x=>(<div key={x} className="chip">{x}</div>))}
+        </div>
+      </div>
+    </div>
+  )
+}
