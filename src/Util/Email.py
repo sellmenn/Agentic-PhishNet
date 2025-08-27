@@ -1,5 +1,6 @@
 class Email:
     def __init__(self):
+        self.ident : str = None
         self.sender : str = None
         self.subject : str = None
         self.cc : str = None
@@ -17,5 +18,8 @@ class Email:
             "content" : self.content
         }
         return email_object
+    
+    def get_ident(self) -> str:
+        return self.ident
 
 
