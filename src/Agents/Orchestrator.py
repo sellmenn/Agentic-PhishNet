@@ -3,14 +3,14 @@ from Util.Email import Email
 from Util.Evaluation import Evaluation
 
 # Weightage given to each agent's evaluation
-weightage = [0.5, 0.5]
+WEIGHTS = [0.5, 0.5]
 
 cutoff = 0.8
 bias = 0.6
 
-class Ochestrator:
-    def __init__(self, weightage = [0.5, 0.5], cutoff = 0.4, bias = 0.6, agents : tuple[Model] = ()):
-        self.weightage = weightage
+class Orchestrator:
+    def __init__(self, weights = WEIGHTS, cutoff = 0.4, bias = 0.6, agents : tuple[Model] = ()):
+        self.weights = weights
         self.cutoff = cutoff
         self.bias = bias
         self.agents : tuple[Model] = agents
@@ -32,8 +32,8 @@ class Ochestrator:
 
         for (idx, agent) in enumerate(self.agents):
             agent.evaluate(email)
-            final_confidence_score += agent.get_confidence(email_ident) * weightage[idx]
-            summary += f"{agent.get_type()} : {agent.get_summary()}\n"
+            final_confidence_score += agent.get_confidence(email_ident) * self.weights[idx]
+            summary += f"{agent.get_type()} : {agent.get_summary(email_ident)}\n"
             for h in agent.get_highlight(email_ident):
                 highlight.append(h)
             agent_usage = agent.get_token_usage(email_ident)
