@@ -1,5 +1,3 @@
-from Agents.Model import Model
-
 class Evaluation:
     def __init__(
             self, 
@@ -10,11 +8,23 @@ class Evaluation:
         ):
 
         self.ident = None
-        self.evaluator : Model = None
+        self.evaluator_type : str = None
         self.confidence = confidence
         self.summary = summary
         self.token_usage = token_usage
         self.highlight = highlight
+
+    def __repr__(self):
+        str_rep = (
+            "----------Evaluation Object----------\n"
+            f"* ident -> {self.ident if self.ident else "None"}\n"
+            f"* evaluator -> {self.evaluator_type}\n"
+            f"* confidence -> {self.confidence}\n"
+            f"* summary -> {self.summary}\n"
+            f"* highlight -> {self.highlight}\n"
+            f"* token usage -> {self.token_usage}\n\n"
+        )
+        return str_rep
 
     def set_ident(self, ident: str) -> None:
         self.ident = ident
@@ -22,7 +32,7 @@ class Evaluation:
     def get_ident(self) -> str | None:
         return self.ident
 
-    def set_evaluator(self, evaluator : Model):
+    def set_evaluator(self, evaluator):
         self.evaluator = evaluator
 
     def get_confidence(self) -> float:

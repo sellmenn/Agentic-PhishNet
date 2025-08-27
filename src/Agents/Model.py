@@ -5,9 +5,8 @@ import json
 class Model:
     def __init__(self):
         self.temp : float = 0
-        self.evals : list[Evaluation]
+        self.evals : list[Evaluation] = []
         self.type : str = None
-        self.llm_wrapper = None # To be implemented !!
 
     def get_type(self) -> str:
         raise NotImplementedError("To be implemented in subclass.")
@@ -31,21 +30,16 @@ class Model:
             ]
         }
         """
-        e = None # self.llm_wrapper outputs evaluation e : json
-        e_obj = Evaluation(
-            confidence=e["confidence_score"],
-            summary=e["summary"],
-            token_usage=e["token_usage"],
-            highlight=e["highlight"]
-        )
-        e_obj.set_ident(ident=email.get_ident())
-        self.evals.append(e_obj)
-
-    def get_e_obj(self, ident) -> Evaluation | None: 
+        raise NotImplementedError("To be implemented in subclass.")
+    
+    def get_e_obj(self, ident):
         for e in self.evals:
             if e.get_ident() == ident:
                 return e
         return None
+
+    def get_evaluation(self, ident):
+        return self.get_e_obj(ident)
 
     def get_confidence(self, ident): 
         return self.get_e_obj(ident).get_confidence()
