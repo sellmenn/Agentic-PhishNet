@@ -1,19 +1,25 @@
 from Agents.Model import Model
 from Util.Email import Email
 from Util.Evaluation import Evaluation
+from Util.handlers import *
 
 # Weightage given to each agent's evaluation
-WEIGHTS = [0.5, 0.5]
 
 cutoff = 0.8
 bias = 0.6
 
 class Orchestrator:
-    def __init__(self, weights = WEIGHTS, cutoff = 0.4, bias = 0.6, agents : tuple[Model] = ()):
+    def __init__(self, weights : list[float], cutoff = 0.4, bias = 0.6, agents : tuple[Model] = ()):
         self.weights = weights
         self.cutoff = cutoff
         self.bias = bias
         self.agents : tuple[Model] = agents
+
+        # Verification
+        verify_weights(weights)
+        if len(agents) != len(weights):
+            raise Exception("Number of weights provided does not match number of agents!")
+
         
     def evaluate_email(self, email : Email) -> Evaluation:
         """
@@ -32,8 +38,9 @@ class Orchestrator:
 
         for (idx, agent) in enumerate(self.agents):
             agent.evaluate(email)
+            print(agent.get_confidence(email_ident))
             final_confidence_score += agent.get_confidence(email_ident) * self.weights[idx]
-            summary += f"{agent.get_type()} : {agent.get_summary(email_ident)}\n"
+            summary += f"\n{agent.get_type()} : {agent.get_summary(email_ident)}\n"
             for h in agent.get_highlight(email_ident):
                 highlight.append(h)
             agent_usage = agent.get_token_usage(email_ident)
@@ -49,9 +56,10 @@ class Orchestrator:
 
         evaluation = Evaluation(
             confidence=final_confidence_score,
-            summary=agent.get_summary(email_ident),
+            summary=summary,
             highlight=highlight,
             token_usage=combined_usage
         )
 
         return evaluation
+    

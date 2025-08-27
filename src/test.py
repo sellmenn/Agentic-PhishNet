@@ -1,6 +1,8 @@
 from Agents.LangModel import LangModel
+from Agents.FactModel import FactModel
 from Agents.Orchestrator import Orchestrator
 from Util.Email import Email
+from Util.handlers import *
 
 def create_demo_email(file_name : str) -> Email:
     demo = Email()
@@ -13,7 +15,7 @@ def create_demo_email(file_name : str) -> Email:
 def test_lang_model():
     print("\n\n*** Testing Language Analysis Model ***")
     agent = LangModel()
-    email = create_demo_email("/Users/ariqkoh/Desktop/Agentic-PhishNet/Sample/positive/pearsonpdt.txt")
+    email = create_demo_email("/Users/ariqkoh/Desktop/Agentic-PhishNet/Sample/positive/taisplunch.txt")
     email_id = email.get_ident()
     agent.evaluate(email)
     e = agent.get_e_obj(email_id)
@@ -22,10 +24,10 @@ def test_lang_model():
 def test_orchestrator():
     print("\n\n*** Testing Orchestrator ***")
     demo_email = create_demo_email("/Users/ariqkoh/Desktop/Agentic-PhishNet/Sample/positive/pearsonpdt.txt")
-    weights = [1]
+    weights = [0.5, 0.5]
     lang_agent = LangModel()
-    agents = []
-    agents.append(lang_agent)
+    fact_agent = FactModel()
+    agents = (lang_agent, fact_agent)
 
     o = Orchestrator(
         weights=weights,
@@ -40,4 +42,4 @@ def run_all_tests():
     test_orchestrator()
     
 if __name__ == "__main__":
-    run_all_tests()
+    test_orchestrator()
