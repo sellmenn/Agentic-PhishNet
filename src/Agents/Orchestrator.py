@@ -21,7 +21,7 @@ class Orchestrator:
             raise Exception("Number of weights provided does not match number of agents!")
 
         
-    def evaluate_email(self, email : Email) -> Evaluation:
+    def evaluate_email(self, email : Email) -> str:
         """
         Returns the following
         {
@@ -35,6 +35,8 @@ class Orchestrator:
         highlight = []
         email_ident = email.get_ident()
         prompt_tokens, completion_tokens, total_tokens = 0, 0, 0
+        agent_types = []
+        agent_confidence = []
 
         for (idx, agent) in enumerate(self.agents):
             agent.evaluate(email)
@@ -47,6 +49,8 @@ class Orchestrator:
             prompt_tokens += agent_usage["prompt_tokens"]
             completion_tokens += agent_usage["completion_tokens"]
             total_tokens += agent_usage["total_tokens"]
+            agent_types.append(agent.get_type())
+            agent_confidence.append(agent.get_confidence(email_ident))
 
         combined_usage = {
             "prompt_tokens" : prompt_tokens,
@@ -61,5 +65,14 @@ class Orchestrator:
             token_usage=combined_usage
         )
 
-        return evaluation
+        eval_json = {
+            "final_confidence" : final_confidence_score,
+            "agent_types" : agent_types,
+            "agent_confidence" :agent_confidence,
+            "summary" : summary,
+            "highlight" : highlight,
+            "token_usage" : combined_usage
+        }
+
+        return eval_json
     
