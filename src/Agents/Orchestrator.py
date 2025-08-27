@@ -22,14 +22,6 @@ class Orchestrator:
 
         
     def evaluate_email(self, email : Email) -> str:
-        """
-        Returns the following
-        {
-            "confidence" : final_confidence_score,
-            "summary" : summary,
-            "highlights" : highlights
-        }
-        """
         final_confidence_score = 0
         summary = ""
         highlight = []
@@ -57,13 +49,6 @@ class Orchestrator:
             "completion_tokens" : completion_tokens,
             "total_tokens" : total_tokens
         }
-
-        evaluation = Evaluation(
-            confidence=final_confidence_score,
-            summary=summary,
-            highlight=highlight,
-            token_usage=combined_usage
-        )
 
         eval_json = {
             "final_confidence" : final_confidence_score,
