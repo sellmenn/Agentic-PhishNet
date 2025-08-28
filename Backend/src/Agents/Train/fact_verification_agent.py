@@ -8,6 +8,9 @@ CLI:
   --output_file <path>     Where to write the JSON (default: fact_verification_output.json)
   --model <model_name>     OpenAI model (default: gpt-4o-mini)
   --api_key <key>          Optional; otherwise uses OPENAI_API_KEY env var
+  --trained_path <path>    Path to final training checkpoint JSON
+  --top_k_extract <int>    How many top extraction strategies to use (default: 2)
+  --top_k_verify  <int>    How many top verification strategies to use (default: 3)
 
 Output JSON (similar to previous agent):
 {
@@ -22,12 +25,14 @@ Output JSON (similar to previous agent):
 
 Internally:
 - Extracts claims (one call), then verifies each claim (one call per claim), closed-book.
+- Uses evolved prompts from a trained checkpoint (top-K extraction + rotating verification strategies).
 - Aggregates per-claim results into confidence_score and highlights suspicious spans.
 """
 
 import argparse
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
@@ -44,6 +49,8 @@ class AgentConfig:
     max_tokens_extract: int = 900
     max_tokens_verify: int = 400
     max_claims_per_email: int = 12  # safety cap
+    top_k_extract: int = 2
+    top_k_verify: int = 3
 
 # Strict JSON schema used during verification (mirrors training)
 RESPONSE_SCHEMA = """
@@ -57,7 +64,7 @@ Return ONLY valid JSON with EXACT keys:
 No markdown, no code fences, no extra keys, no extra text.
 """.strip()
 
-EXTRACTION_PROMPT = (
+DEFAULT_EXTRACTION_PROMPT = (
     "Extract verifiable factual claims from this email, focusing on:\n"
     "- Company/organization names\n"
     "- Contact info (phones, emails, URLs)\n"
@@ -73,9 +80,90 @@ EXTRACTION_PROMPT = (
 # ----------------------------- Agent ------------------------------
 
 class FactVerificationAgent:
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-4o-mini"):
-        self.config = AgentConfig(base_model=model)
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: str = "gpt-4o-mini",
+        trained_path: Optional[str] = None,
+        top_k_extract: int = 2,
+        top_k_verify: int = 3,
+    ):
+        self.config = AgentConfig(
+            base_model=model,
+            top_k_extract=max(1, int(top_k_extract)),
+            top_k_verify=max(1, int(top_k_verify)),
+        )
         self.client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
+
+        # Trained strategy holders
+        self.extract_strategies: List[Dict] = []   # list of {"prompt", "success_rate", ...}
+        self.verify_strategies: List[Dict] = []    # list of {"prompt", "success_rate", ...}
+
+        # Load trained strategies if available
+        trained_path = os.getenv("FACT_TRAINED_CHECKPOINT_PATH")
+        self._load_trained_strategies(trained_path)
+
+    # --------------- Strategy loading ---------------------
+
+    def _sanitize_prompt(self, text: str) -> str:
+        # Strip code fences like ```json ... ``` or ```
+        text = re.sub(r"```[a-zA-Z]*\s*", "", text or "")
+        text = text.replace("```", "")
+        return text.strip()
+
+    def _load_trained_strategies(self, path: str) -> None:
+        """
+        Load strategies from a final training results JSON. Supports both fact-agent and (as fallback)
+        language-agent checkpoints:
+          - Fact agent: claim_extraction_strategies, verification_strategies
+          - Language agent: defender_strategies (ignored here)
+        """
+        try:
+            if not os.path.exists(path):
+                return
+            with open(path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            # Fact agent fields
+            extract = data.get("claim_extraction_strategies") or []
+            verify = data.get("verification_strategies") or []
+
+            # Some checkpoints may nest strategies inside another object
+            if not extract and isinstance(data.get("knowledge_base"), dict):
+                # nothing else to do; just robustness
+                pass
+
+            # Clean and sort extraction strategies
+            cleaned_extract = []
+            for s in extract:
+                pr = self._sanitize_prompt(s.get("prompt", ""))
+                if pr:
+                    cleaned_extract.append({
+                        "name": s.get("name", "extraction"),
+                        "prompt": pr,
+                        "success_rate": float(s.get("success_rate", 0.5) or 0.5)
+                    })
+            cleaned_extract.sort(key=lambda x: x["success_rate"], reverse=True)
+
+            # Clean and sort verification strategies
+            cleaned_verify = []
+            for s in verify:
+                pr = self._sanitize_prompt(s.get("prompt", ""))
+                if pr:
+                    cleaned_verify.append({
+                        "name": s.get("name", "verification"),
+                        "prompt": pr,
+                        "success_rate": float(s.get("success_rate", 0.5) or 0.5)
+                    })
+            cleaned_verify.sort(key=lambda x: x["success_rate"], reverse=True)
+
+            self.extract_strategies = cleaned_extract
+            self.verify_strategies = cleaned_verify
+
+        except Exception:
+            # Fail soft: run with defaults if file is malformed
+            self.extract_strategies = []
+            self.verify_strategies = []
 
     # --------------- Internal helpers & parsing ---------------------
 
@@ -116,17 +204,28 @@ class FactVerificationAgent:
 
     # ---------------------- Extraction phase -----------------------
 
+    def _compose_extraction_instruction(self) -> str:
+        """
+        Combine top-K extraction strategies (if any) + the default extraction prompt.
+        """
+        if self.extract_strategies:
+            top = self.extract_strategies[: self.config.top_k_extract]
+            joined = "\n\n".join([f"[Extraction Strategy {i+1}]\n{e['prompt']}" for i, e in enumerate(top)])
+            return f"Use the following extraction strategies as guidance:\n{joined}\n\n{DEFAULT_EXTRACTION_PROMPT}"
+        return DEFAULT_EXTRACTION_PROMPT
+
     def _extract_claims(self, email_content: str) -> Tuple[List[Dict], Dict]:
         """Return (claims, usage)."""
         if not email_content.strip():
             return [], {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
         try:
+            extraction_instruction = self._compose_extraction_instruction()
             resp = self.client.chat.completions.create(
                 model=self.config.base_model,
                 messages=[
                     {"role": "system", "content": "Extract verifiable claims with precise indices. Return JSON only."},
-                    {"role": "user", "content": f"{EXTRACTION_PROMPT}\n\nEMAIL CONTENT:\n{email_content}"}
+                    {"role": "user", "content": f"{extraction_instruction}\n\nEMAIL CONTENT:\n{email_content}"}
                 ],
                 temperature=self.config.temperature_extract,
                 max_tokens=self.config.max_tokens_extract,
@@ -168,7 +267,7 @@ class FactVerificationAgent:
 
     # ---------------------- Verification phase ---------------------
 
-    def _verification_prompt(self) -> str:
+    def _verification_frame(self) -> str:
         return (
             "Verify the factual legitimacy of the claim conservatively (closed-book):\n"
             "- Does the structure match real-world practices (e.g., domains, contact formats, processes)?\n"
@@ -177,9 +276,21 @@ class FactVerificationAgent:
             "If uncertain, lean suspicious."
         )
 
-    def _verify_one_claim(self, claim_text: str) -> Tuple[Dict, Dict]:
-        """Closed-book verify a single claim. Returns (verification, usage)."""
-        prompt = f"""{self._verification_prompt()}
+    def _select_verify_prompt_for_index(self, idx: int) -> Optional[str]:
+        """
+        Rotate through top-K verification strategies; returns strategy prompt or None if none loaded.
+        """
+        if not self.verify_strategies:
+            return None
+        top = self.verify_strategies[: self.config.top_k_verify]
+        strat = top[idx % len(top)]
+        return strat.get("prompt")
+
+    def _verify_one_claim(self, claim_text: str, strat_prompt: Optional[str]) -> Tuple[Dict, Dict]:
+        """Closed-book verify a single claim using (optional) trained strategy guidance. Returns (verification, usage)."""
+        base = self._verification_frame()
+        guide = f"\n\nUse this verification strategy as guidance:\n{strat_prompt}" if strat_prompt else ""
+        prompt = f"""{base}{guide}
 
 CLAIM:
 {claim_text}
@@ -236,8 +347,8 @@ CLAIM:
 
     def analyze_email(self, email_content: str) -> Dict:
         """
-        End-to-end: extract claims, verify each claim, then return the simplified
-        JSON your previous agent emitted (confidence_score, summary, token_usage, highlight).
+        End-to-end: extract claims (guided by trained extraction strategies), verify each claim
+        (rotating through trained verification strategies), then return the simplified schema.
         """
         # 1) Extract claims
         claims, usage_total = self._extract_claims(email_content)
@@ -255,7 +366,8 @@ CLAIM:
                     "verification_source": "model_closed_book"
                 })
                 continue
-            v, u = self._verify_one_claim(ct)
+            guide = self._select_verify_prompt_for_index(i)
+            v, u = self._verify_one_claim(ct, guide)
             v["claim_index"] = i
             verifs.append(v)
             # accumulate usage
@@ -308,55 +420,3 @@ CLAIM:
             "token_usage": usage_total,
             "highlight": highlights
         }
-
-# ------------------------------ CLI --------------------------------
-
-def _read_input_text(input_file: Optional[str], input_string: Optional[str]) -> str:
-    if input_file:
-        with open(input_file, "r", encoding="utf-8") as f:
-            return f.read()
-    if input_string:
-        return input_string
-    # Keep the exact error wording your previous agent used:
-    raise ValueError("No input provided. Use --input_file or --input_string.")
-
-def _write_output_json(output_file: str, data: Dict) -> None:
-    os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
-    with open(output_file, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-def main():
-    parser = argparse.ArgumentParser(description="Fact Verification Agent (Inference)")
-    parser.add_argument("--input_file", type=str, help="Path to a text file containing the email content")
-    parser.add_argument("--input_string", type=str, help="Raw email text passed directly")
-    parser.add_argument("--output_file", type=str, default="fact_verification_output.json", help="Path to write JSON output")
-    parser.add_argument("--model", type=str, default="gpt-4o-mini", help="OpenAI model to use")
-    parser.add_argument("--api_key", type=str, default=None, help="OpenAI API key (or set OPENAI_API_KEY env var)")
-    args = parser.parse_args()
-
-    try:
-        email_text = _read_input_text(args.input_file, args.input_string)
-    except Exception as e:
-        # Match previous agent behavior: raise with the same message
-        print(str(e))
-        sys.exit(1)
-
-    # Initialize agent and analyze
-    try:
-        agent = FactVerificationAgent(api_key=args.api_key, model=args.model)
-        result = agent.analyze_email(email_text)
-    except Exception as e:
-        # Return a minimal JSON on failure (still similar shape)
-        result = {
-            "confidence_score": 0.5,
-            "summary": f"Error in fact verification: {e}",
-            "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-            "highlight": []
-        }
-
-    # Write JSON file and also print the path
-    _write_output_json(args.output_file, result)
-    print(f"✅ Fact verification JSON written to: {args.output_file}")
-
-if __name__ == "__main__":
-    main()
