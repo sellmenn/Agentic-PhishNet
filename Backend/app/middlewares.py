@@ -34,9 +34,7 @@ class PhishNetMiddleware:
             request.form = {}
 
         request.query = request.GET.dict()
-        
+
         print("query", request.query)
         print("body", request.body)
-
-        response = self.get_response(request)
-        return response
+        

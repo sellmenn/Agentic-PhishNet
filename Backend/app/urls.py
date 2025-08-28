@@ -1,7 +1,7 @@
 
 from django.urls import path
-from .views import ping
+from .views import processEmail
 
 urlpatterns = [
-    path("ping/", ping, name="ping"),
+    path("processEmail/", processEmail, name="processEmail"),
 ]
