@@ -1,17 +1,17 @@
 import React, { useMemo, useState } from 'react';
 
-export default function DemoButton({ onClick }) {
+export default function DemoButton({ }) {
   return (
     <button
-      onClick={onClick}
-      className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium transition"
+      onClick={sendDemoMail}
+      className="absolute bottom-5 left-7 px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-medium transition"
     >
       Demo
     </button>
   );
 }
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/';
+const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/';
 
 async function request(path, { method = 'GET', data, signal } = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -28,7 +28,7 @@ async function request(path, { method = 'GET', data, signal } = {}) {
 }
 
 async function sendDemoMail() {
-  data = [
+  let data = [
     // PHISHING
     {
       senderEmail: 'security@paypaI-security.com', // note: lookalike domain
@@ -71,5 +71,5 @@ async function sendDemoMail() {
 
   // emailResult = await request('processEmail', { method:'GET', data:data })
 
-  console.log(await request('processEmail', { method: 'GET', data: data }));
+  console.log(await request('processEmail', { method: 'POST', data: data }));
 }

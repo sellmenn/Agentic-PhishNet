@@ -11,11 +11,19 @@ SECRET_KEY = "dev-only-key"
 
 INSTALLED_APPS = [
     "app",
+    "corsheaders",
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware", 
+    "django.middleware.common.CommonMiddleware",
     "app.middlewares.PhishNetMiddleware",  # our demo middleware
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True          # dev only
+CORS_ALLOW_CREDENTIALS = True          # if you plan to send cookies
+CORS_ALLOW_HEADERS = ["*"]
+CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 ROOT_URLCONF = "server.urls"
 

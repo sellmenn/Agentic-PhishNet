@@ -2,6 +2,7 @@ from .Model import Model
 from src.Util.Email import Email
 from src.Util.Evaluation import Evaluation
 from src.Util.handlers import *
+from concurrent.futures import ThreadPoolExecutor
 
 class Orchestrator:
     def __init__(self, weights: list[float], cutoff=0.4, bias=0.6, agents: tuple[Model] = ()):
