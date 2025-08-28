@@ -1,0 +1,1034 @@
+{
+  "training_completed": true,
+  "total_rounds": 25,
+  "training_time_seconds": 8265.875476360321,
+  "final_evaluation": {
+    "round": 25,
+    "email_accuracy": 0.65,
+    "total_emails": 20,
+    "avg_claims_per_email": 0.0,
+    "avg_claim_fact_accuracy": null,
+    "best_extraction_success": 0.7561309131408376,
+    "best_verification_success": 0.6040276300298479,
+    "knowledge_base_size": {
+      "legitimate_facts": 219,
+      "false_claims": 295
+    },
+    "strategy_evolution_counts": {
+      "extraction": 1,
+      "verification": 0
+    }
+  },
+  "claim_extraction_strategies": [
+    {
+      "name": "entity_extraction",
+      "description": "Extract entities: orgs, contacts, IDs, dates, amounts.",
+      "prompt": "Extract verifiable factual claims from this email, focusing on:\n- Company/organization names\n- Contact info (phones, emails, URLs)\n- Addresses and locations\n- Reference/account numbers or IDs\n- Dates, deadlines, timeframes\n- Financial amounts and offers\n\nReturn JSON: {\"claims\":[{\"claim_text\":\"...\",\"claim_type\":\"domain/contact/financial/procedural/other\",\"start_index\":0,\"end_index\":10,\"verifiable\":true/false,\"verification_method\":\"...\"}]}",
+      "success_rate": 0.7561309131408376,
+      "evolution_count": 1
+    },
+    {
+      "name": "procedural_claims",
+      "description": "Extract procedures/policies/process claims.",
+      "prompt": "Extract procedural and policy-related claims:\n- Verification/authentication steps\n- How legitimate orgs operate\n- Stated policies & procedures\n- Technical requirements\n- Official communication methods\n\nReturn JSON: {\"claims\":[{\"claim_text\":\"...\",\"claim_type\":\"procedural/other\",\"start_index\":0,\"end_index\":10,\"verifiable\":true/false,\"verification_method\":\"...\"}]}",
+      "success_rate": 0.40727132656064075,
+      "evolution_count": 0
+    }
+  ],
+  "verification_strategies": [
+    {
+      "name": "domain_verification",
+      "description": "Judge domain/URL legitimacy, typosquatting, plausibility.",
+      "prompt": "Verify the legitimacy of domains/URLs and claims about them. Consider:\n- Whether the domain structure matches a real organization\n- Typosquatting or misleading subdomains\n- Internal consistency with the email\n- Plausibility given common practices\nDecide conservatively if unclear. Return strict JSON per schema.",
+      "success_rate": 0.5986603163764407,
+      "evolution_count": 0
+    },
+    {
+      "name": "contact_verification",
+      "description": "Judge contact info plausibility (phones/emails/addresses).",
+      "prompt": "Verify contact information plausibility:\n- Phone formats/area codes plausibility\n- Email address domain consistency\n- Physical address plausibility\n- Official contact patterns for such orgs\nDecide conservatively if unclear. Return strict JSON per schema.",
+      "success_rate": 0.5783395040586059,
+      "evolution_count": 0
+    },
+    {
+      "name": "claim_consistency",
+      "description": "Internal logic and cross-claim consistency.",
+      "prompt": "Analyze internal consistency and plausibility:\n- Cross-reference multiple claims\n- Detect contradictions and unlikely combinations\n- Assess coherence and plausibility\nDecide conservatively if unclear. Return strict JSON per schema.",
+      "success_rate": 0.6040276300298479,
+      "evolution_count": 0
+    }
+  ],
+  "knowledge_base": {
+    "legitimate_facts": {
+      "bank_domains": [
+        "chase.com",
+        "bankofamerica.com",
+        "wellsfargo.com",
+        "citibank.com",
+        "usbank.com",
+        "pnc.com",
+        "capitalone.com",
+        "tdbank.com"
+      ],
+      "tech_domains": [
+        "microsoft.com",
+        "google.com",
+        "apple.com",
+        "amazon.com",
+        "facebook.com",
+        "twitter.com",
+        "linkedin.com",
+        "paypal.com"
+      ],
+      "government_domains": [
+        "irs.gov",
+        "ssa.gov",
+        "usa.gov",
+        "fbi.gov",
+        "dhs.gov"
+      ],
+      "legitimate_phone_prefixes": [
+        "1-800",
+        "1-888",
+        "1-877",
+        "1-866",
+        "1-855",
+        "1-844",
+        "1-833",
+        "1-822"
+      ],
+      "organization": [
+        "paypal",
+        "fedex",
+        "irs",
+        "chase",
+        "wells fargo",
+        "ups",
+        "amazon",
+        "facebook",
+        "uscis",
+        "airbnb",
+        "bank of america",
+        "linkedin",
+        "google"
+      ],
+      "contact": [
+        "noreply@paypal.com",
+        "billing@paypal.com",
+        "https://paypal.com/security",
+        "care@fedex.com",
+        "support@fedex.com",
+        "noreply@wellsfargo.com",
+        "noreply@amazon.com",
+        "https://spotify.com/security",
+        "security@facebook.com",
+        "support@facebook.com",
+        "care@google.com",
+        "https://airbnb.com/security",
+        "https://microsoft.com/security",
+        "billing@chase.com",
+        "care@bankofamerica.com",
+        "help@airbnb.com",
+        "support@uscis.gov",
+        "billing@linkedin.com",
+        "service@fedex.com",
+        "support@ups.com",
+        "billing@airbnb.com",
+        "billing@google.com"
+      ],
+      "URL": [
+        "https://paypal.com/security",
+        "https://slack.com/contact",
+        "https://slack.com/security",
+        "https://bankofamerica.com/security",
+        "https://fedex.com/login",
+        "https://fedex.com/security",
+        "https://irs.gov/security",
+        "https://irs.gov/support",
+        "https://amazon.com/support",
+        "https://amazon.com/security",
+        "https://slack.com/help",
+        "https://netflix.com/security",
+        "https://chase.com/security",
+        "https://wellsfargo.com/security",
+        "https://ups.com/security",
+        "https://netflix.com/help",
+        "https://facebook.com/security",
+        "https://spotify.com/account",
+        "https://spotify.com/security",
+        "https://airbnb.com/security",
+        "https://airbnb.com/contact",
+        "https://airbnb.com/login",
+        "https://uscis.gov/security",
+        "https://linkedin.com/security",
+        "https://ups.com/login",
+        "https://bankofamerica.com/login",
+        "https://google.com/security"
+      ],
+      "financial": [
+        "$4,073.97",
+        "$991.37",
+        "$145.46",
+        "$2,545.87",
+        "$3,410.64",
+        "$2,725.66",
+        "$4,646.07",
+        "$1,968.82",
+        "$2,647.98",
+        "$1,853.86",
+        "$3,684.77",
+        "$64.37",
+        "$3,167.33"
+      ],
+      "company/organization": [
+        "bank of america",
+        "fedex",
+        "google",
+        "netflix",
+        "spotify",
+        "ups",
+        "amazon",
+        "airbnb",
+        "microsoft",
+        "chase",
+        "irs"
+      ],
+      "procedural/other": [
+        "if you did not request this change, please contact us.",
+        "your monthly statement is now available online.",
+        "our records indicate your preferred contact method is email.",
+        "we value the security of your account and strive to keep your information safe.",
+        "for security tips, visit https://google.com/security.",
+        "google will never ask for your password or 2fa codes via email.",
+        "wells fargo will never ask for your password or 2fa codes via email.",
+        "for security tips, visit https://netflix.com/security.",
+        "netflix will never ask for your password or 2fa codes via email.",
+        "please review the recent activity and let us know if you notice anything unusual.",
+        "for security tips, visit https://dropbox.com/security.",
+        "your upcoming automatic payment is $1,746.83 on october 30, 2025.",
+        "for assistance, contact us at https://spotify.com/contact.",
+        "for security tips, visit https://spotify.com/security.",
+        "spotify will never ask for your password or 2fa codes via email.",
+        "uscis will never ask for your password or 2fa codes via email.",
+        "your preferred contact method is email.",
+        "for assistance, contact us at https://uscis.gov/support.",
+        "for security tips, visit https://uscis.gov/security.",
+        "for assistance, contact us at https://wellsfargo.com/contact.",
+        "for security tips, visit https://wellsfargo.com/security.",
+        "chase will never ask for your password or 2fa codes via email.",
+        "facebook will never ask for your password or 2fa codes via email.",
+        "for assistance, contact us at https://fedex.com/contact.",
+        "for security tips, visit https://fedex.com/security.",
+        "fedex will never ask for your password or 2fa codes via email.",
+        "you can manage your notification settings at any time.",
+        "your upcoming automatic payment is $86.71 on december 06, 2025.",
+        "for security tips, visit https://bankofamerica.com/security.",
+        "bank of america will never ask for your password or 2fa codes via email.",
+        "your upcoming automatic payment is $4,106.93 on november 28, 2025.",
+        "for security tips, visit https://facebook.com/security.",
+        "for assistance, contact us at service@facebook.com.",
+        "paypal will never ask for your password or 2fa codes via email.",
+        "apple will never ask for your password or 2fa codes via email.",
+        "for security tips, visit https://apple.com/security."
+      ],
+      "policy": [
+        "uscis will never ask for your password or 2fa codes via email.",
+        "dropbox will never ask for your password or 2fa codes via email.",
+        "google will never ask for your password or 2fa codes via email.",
+        "facebook will never ask for your password or 2fa codes via email.",
+        "bank of america will never ask for your password or 2fa codes via email."
+      ],
+      "official communication method": [
+        "for security tips, visit https://uscis.gov/security.",
+        "for security tips, visit https://microsoft.com/security.",
+        "for assistance, contact us at support@ups.com.",
+        "for security tips, visit https://ups.com/security."
+      ],
+      "official communication methods": [
+        "for assistance, contact us at service@paypal.com.",
+        "for assistance, contact us at https://chase.com/contact.",
+        "for security tips, visit https://chase.com/security.",
+        "for assistance, contact us at service@amazon.com.",
+        "for security tips, visit https://microsoft.com/security.",
+        "for assistance, contact us at https://wellsfargo.com/account.",
+        "for security tips, visit https://wellsfargo.com/security.",
+        "for assistance, contact us at support@irs.gov.",
+        "for security tips, visit https://fedex.com/security.",
+        "for assistance, contact us at support@chase.com.",
+        "for security tips, visit https://spotify.com/security.",
+        "for security tips, visit https://irs.gov/security.",
+        "for security tips, visit https://facebook.com/security.",
+        "for assistance, contact us at security@bankofamerica.com.",
+        "for security tips, visit https://bankofamerica.com/security.",
+        "for assistance, contact us at https://amazon.com/account.",
+        "for security tips, visit https://amazon.com/security.",
+        "for assistance, contact us at support@facebook.com.",
+        "for assistance, contact us at service@uscis.gov.",
+        "for security tips, visit https://uscis.gov/security.",
+        "for assistance, contact us at security@amazon.com.",
+        "for assistance, contact us at support@linkedin.com.",
+        "for security tips, visit https://linkedin.com/security.",
+        "for security tips, visit https://slack.com/security.",
+        "for security tips, visit https://paypal.com/security.",
+        "for security tips, visit https://netflix.com/security."
+      ],
+      "technical requirements": [
+        "for security tips, visit https://paypal.com/security.",
+        "for security tips, visit https://amazon.com/security."
+      ],
+      "stated policies & procedures": [
+        "paypal will never ask for your password or 2fa codes via email.",
+        "chase will never ask for your password or 2fa codes via email.",
+        "amazon will never ask for your password or 2fa codes via email.",
+        "microsoft will never ask for your password or 2fa codes via email.",
+        "irs will never ask for your password or 2fa codes via email.",
+        "fedex will never ask for your password or 2fa codes via email.",
+        "spotify will never ask for your password or 2fa codes via email.",
+        "facebook will never ask for your password or 2fa codes via email.",
+        "bank of america will never ask for your password or 2fa codes via email.",
+        "your upcoming automatic payment is $20.08 on august 29, 2025.",
+        "uscis will never ask for your password or 2fa codes via email.",
+        "linkedin will never ask for your password or 2fa codes via email.",
+        "slack will never ask for your password or 2fa codes via email.",
+        "netflix will never ask for your password or 2fa codes via email.",
+        "ups will never ask for your password or 2fa codes via email.",
+        "ssa will never ask for your password or 2fa codes via email."
+      ],
+      "contact info": [
+        "support@google.com",
+        "https://google.com/security",
+        "care@airbnb.com",
+        "https://airbnb.com/security",
+        "https://microsoft.com/security"
+      ],
+      "company": [
+        "fedex",
+        "slack",
+        "airbnb",
+        "google",
+        "amazon"
+      ],
+      "domain/contact": [
+        "https://slack.com/login",
+        "https://slack.com/security"
+      ],
+      "policy/procedure": [
+        "wells fargo will never ask for your password or 2fa codes via email.",
+        "microsoft will never ask for your password or 2fa codes via email."
+      ],
+      "other": [
+        "ups support"
+      ]
+    },
+    "false_claims": {
+      "impossible_prizes": [
+        "email lottery",
+        "microsoft lottery",
+        "google lottery",
+        "facebook lottery"
+      ],
+      "fake_urgency": [
+        "account suspended in 24 hours",
+        "immediate verification required",
+        "act within 48 hours or lose access"
+      ],
+      "suspicious_domains": [
+        "microsoft-lottery",
+        "google-verify",
+        "paypal-security",
+        "amazon-update",
+        "apple-verification"
+      ],
+      "other": [
+        "jordan thomas",
+        "jordan harris",
+        "drew wilson",
+        "cameron jackson",
+        "drew davis",
+        "cameron martin",
+        "jordan taylor",
+        "taylor smith",
+        "jamie smith",
+        "jamie anderson",
+        "riley taylor",
+        "cameron smith",
+        "riley miller",
+        "morgan jackson",
+        "drew brown"
+      ],
+      "contact": [
+        "+37-924-255-5235",
+        "https://microsoft-secure-36.com",
+        "+56-964-804-9054",
+        "+64-453-670-8146",
+        "+46-787-793-5955",
+        "+54-457-247-6680",
+        "+26-987-402-9365",
+        "+16-574-411-3574",
+        "+49-728-160-4104",
+        "+81-344-277-2544",
+        "+49-865-758-7974",
+        "+58-230-168-6110",
+        "security-778@slackcom-support.com",
+        "https://s1ack-58.info",
+        "+90-649-195-1869",
+        "+19-719-372-9780",
+        "+4-461-941-8922",
+        "+63-397-789-5857",
+        "security-351@amazoncom-support.com",
+        "+40-998-692-7973",
+        "+83-226-730-9963"
+      ],
+      "financial": [
+        "$2,243.90",
+        "$1,718.99",
+        "$3,383.66",
+        "$4,796.25",
+        "$3,186.87",
+        "$4,329.40",
+        "$4,907.75",
+        "$2,359.94",
+        "$903.44",
+        "$2,164.66",
+        "$4,516.83",
+        "$2,143.58",
+        "$1,158.29",
+        "$1,901.74",
+        "$4,092.63",
+        "$4,738.98",
+        "$4,935.94",
+        "$1,065.59",
+        "$2,650.75",
+        "$862.79",
+        "$1,743.41",
+        "$3,266.05",
+        "$210.51",
+        "$3,493.79",
+        "$1,645.87",
+        "$4,480.32",
+        "$1,666.31",
+        "$366.39",
+        "$4,787.77",
+        "$4,591.66",
+        "$3,879.17"
+      ],
+      "date": [
+        "october 02, 2025",
+        "november 24, 2025",
+        "august 31, 2025",
+        "december 16, 2025",
+        "october 19, 2025",
+        "december 05, 2025",
+        "december 06, 2025",
+        "september 16, 2025",
+        "december 18, 2025",
+        "october 05, 2025",
+        "october 17, 2025",
+        "september 09, 2025",
+        "november 03, 2025",
+        "november 11, 2025",
+        "september 29, 2025",
+        "october 12, 2025",
+        "december 22, 2025",
+        "august 30, 2025",
+        "december 25, 2025",
+        "october 30, 2025",
+        "october 28, 2025",
+        "november 27, 2025",
+        "november 12, 2025"
+      ],
+      "timeframe": [
+        "12 hours",
+        "96 hours",
+        "36 hours",
+        "24 hours",
+        "72 hours",
+        "48 hours"
+      ],
+      "URL": [
+        "https://uscis-29.co",
+        "https://airbnb-77.net",
+        "https://airbnb-90.info",
+        "https://airbnb-60.com",
+        "https://faceb00k-72.info",
+        "https://id.app1e-38.com",
+        "https://facebook-safe-66.com",
+        "https://facebook-secure-40.com",
+        "https://login.support-google-22.com",
+        "https://google.com/security",
+        "https://verify.uscis-11.gov",
+        "https://uscis.gov/security",
+        "https://chase-safe-92.com",
+        "https://1inkedin-70.info",
+        "https://login.support-wellsfargo-50.info",
+        "https://id.dropbox-18.co",
+        "https://ssa-safe-25.net",
+        "https://microsoft-security-94.net",
+        "https://uscis-alerts-27.gov",
+        "https://dropbox-billing-14.info",
+        "https://login.support-amazon-14.com",
+        "https://id.support-ups-40.co",
+        "https://verify.microsoft-73.net",
+        "https://bankofamerica-verify-91.co",
+        "https://bank0famerica-68.com",
+        "https://fedex-security-17.com",
+        "https://linkedin-update-24.co",
+        "https://id.support-facebook-70.com",
+        "https://wellsfargo-safe-38.info",
+        "https://ssa-billing-10.com",
+        "https://login.amazon-14.co",
+        "https://we11sfargo-18.net",
+        "https://netflix-safe-98.com",
+        "https://update.irs-verify-64.com",
+        "https://irs.gov/security",
+        "https://microsoft-login-28.net",
+        "https://account.irs-20.net",
+        "https://support-uscis-69.net",
+        "https://uscis-25.gov",
+        "https://support-netflix-54.info",
+        "https://spotify-security-21.com",
+        "https://id.microsoft-verify-44.net",
+        "https://account.paypa1-92.net",
+        "https://update.sp0tify-71.com",
+        "https://paypa1-64.co"
+      ],
+      "email": [
+        "security-952@uscisgov-support.com",
+        "security-234@airbnbcom-support.com",
+        "security-771@facebookcom-support.com",
+        "security-720@applecom-support.com",
+        "security-572@facebookcom-support.com",
+        "security-330@chasecom-support.com",
+        "security-355@dropboxcom-support.com",
+        "security-376@ssagov-support.com",
+        "security-682@microsoftcom-support.com",
+        "security-622@amazoncom-support.com",
+        "security-179@upscom-support.com",
+        "security-245@microsoftcom-support.com",
+        "security-601@bankofamericacom-support.com",
+        "security-738@fedexcom-support.com",
+        "security-909@facebookcom-support.com",
+        "security-538@wellsfargocom-support.com",
+        "security-879@amazoncom-support.com",
+        "security-416@netflixcom-support.com",
+        "security-642@irsgov-support.com",
+        "security-218@uscisgov-support.com",
+        "security-341@uscisgov-support.com",
+        "security-808@netflixcom-support.com",
+        "security-125@microsoftcom-support.com",
+        "security-771@paypalcom-support.com"
+      ],
+      "procedural/other": [
+        "your account will be suspended within 72 hours unless you verify immediately.",
+        "reply with your password and 2fa code so we can re-enable access.",
+        "your account will be suspended within 96 hours unless you verify immediately.",
+        "verify now at: https://support-google-12.com",
+        "call +54-825-764-3670 to avoid permanent suspension.",
+        "your account will be suspended within 12 hours unless you verify immediately.",
+        "your account will be suspended within 24 hours unless you verify immediately.",
+        "your account will be suspended within 36 hours unless you verify immediately.",
+        "your account will be suspended within 48 hours unless you verify immediately.",
+        "verify now at: https://bankofamerica-52.net",
+        "verify now at: https://ssa-31.gov",
+        "contact us at security-631@ssagov-support.com for immediate assistance.",
+        "verify now at: https://secure.paypal-billing-61.net",
+        "call +50-914-615-6918 to avoid permanent suspension.",
+        "congratulations! you have won $4,304.49 in our paypal loyalty lottery.",
+        "verify now at: https://account.1inkedin-60.info",
+        "call +73-812-734-6327 to avoid permanent suspension."
+      ],
+      "technical requirements": [
+        "verify now at: https://login.dr0pb0x-33.co",
+        "verify now at: https://bankofamerica-15.co",
+        "verify now at: https://secure.ups-37.info",
+        "verify now at: https://update.google-notice-32.com",
+        "verify now at: https://dropbox-29.net",
+        "verify now at: https://apple-notice-22.info",
+        "verify now at: https://id.bankofamerica-secure-95.co",
+        "verify now at: https://secure.support-linkedin-88.com",
+        "verify now at: https://id.irs-safe-52.com",
+        "verify now at: https://fedex-update-37.co",
+        "verify now at: https://wellsfargo-verify-52.info",
+        "verify now at: https://secure.support-fedex-70.info",
+        "verify now at: https://ssa-43.gov",
+        "verify now at: https://facebook-75.info",
+        "verify now at: https://update.dropbox-verify-17.info",
+        "verify now at: https://login.paypal-billing-91.com",
+        "verify now at: https://verify.netflix-notice-70.com",
+        "verify now at: https://chase-10.co",
+        "verify now at: https://faceb00k-65.net",
+        "verify now at: https://google-security-91.co",
+        "verify now at: https://id.bankofamerica-92.com",
+        "verify now at: https://secure.fedex-44.com",
+        "verify now at: https://microsoft-secure-58.com",
+        "verify now at: https://account.irs-55.co",
+        "verify now at: https://support-google-28.com",
+        "verify now at: https://paypa1-69.net",
+        "verify now at: https://airbnb-34.net",
+        "verify now at: https://login.airbnb-21.info",
+        "verify now at: https://dropbox-update-32.com",
+        "verify now at: https://wellsfarg0-87.com",
+        "verify now at: https://microsoft-secure-78.co",
+        "verify now at: https://amazon-alerts-66.com",
+        "verify now at: https://netf1ix-81.com",
+        "verify now at: https://slack-alerts-70.com",
+        "verify now at: https://fedex-24.com",
+        "verify now at: https://sp0tify-69.net"
+      ],
+      "official communication methods": [
+        "contact us at security-711@dropboxcom-support.com for immediate assistance.",
+        "contact us at security-981@bankofamericacom-support.com for immediate assistance.",
+        "call +37-797-562-4171 to avoid permanent suspension.",
+        "call +7-440-563-3302 to avoid permanent suspension.",
+        "call +64-596-663-5951 to avoid permanent suspension.",
+        "call +17-996-647-3927 to avoid permanent suspension.",
+        "contact us at security-222@bankofamericacom-support.com for immediate assistance.",
+        "call +22-700-275-5981 to avoid permanent suspension.",
+        "contact us at security-114@irsgov-support.com for immediate assistance.",
+        "call +20-379-569-2597 to avoid permanent suspension.",
+        "contact us at security-188@wellsfargocom-support.com for immediate assistance.",
+        "call +72-282-613-8990 to avoid permanent suspension.",
+        "contact us at security-788@ssagov-support.com for immediate assistance.",
+        "call +3-522-965-8839 to avoid permanent suspension.",
+        "call +52-633-943-9634 to avoid permanent suspension.",
+        "call +21-740-123-3440 to avoid permanent suspension.",
+        "contact us at security-314@netflixcom-support.com for immediate assistance.",
+        "contact us at security-584@chasecom-support.com for immediate assistance.",
+        "contact us at security-154@facebookcom-support.com for immediate assistance.",
+        "call +91-369-807-4841 to avoid permanent suspension.",
+        "contact us at security-985@bankofamericacom-support.com for immediate assistance.",
+        "call +26-322-175-5265 to avoid permanent suspension.",
+        "contact us at security-860@microsoftcom-support.com for immediate assistance.",
+        "call +61-324-379-9763 to avoid permanent suspension.",
+        "call +72-668-666-3175 to avoid permanent suspension.",
+        "call +91-656-786-2493 to avoid permanent suspension.",
+        "call +67-391-789-8016 to avoid permanent suspension.",
+        "call +41-955-339-1342 to avoid permanent suspension.",
+        "call +25-829-198-3897 to avoid permanent suspension.",
+        "contact us at security-409@wellsfargocom-support.com for immediate assistance.",
+        "contact us at security-658@microsoftcom-support.com for immediate assistance.",
+        "call +42-821-843-8051 to avoid permanent suspension.",
+        "contact us at security-626@netflixcom-support.com for immediate assistance.",
+        "call +20-517-545-9351 to avoid permanent suspension.",
+        "call +60-998-813-1031 to avoid permanent suspension.",
+        "call +74-998-193-4526 to avoid permanent suspension."
+      ],
+      "stated policies & procedures": [
+        "a reactivation fee of $274.99 will be charged if you fail to verify by september 07, 2025.",
+        "a reactivation fee of $2,979.53 will be charged if you fail to verify by september 27, 2025.",
+        "a reactivation fee of $1,836.59 will be charged if you fail to verify by december 22, 2025.",
+        "a reactivation fee of $3,848.98 will be charged if you fail to verify by september 05, 2025.",
+        "a reactivation fee of $3,373.96 will be charged if you fail to verify by october 23, 2025.",
+        "a reactivation fee of $3,900.82 will be charged if you fail to verify by december 13, 2025.",
+        "a reactivation fee of $1,592.73 will be charged if you fail to verify by september 08, 2025.",
+        "a reactivation fee of $3,609.57 will be charged if you fail to verify by november 15, 2025.",
+        "a reactivation fee of $902.61 will be charged if you fail to verify by november 25, 2025.",
+        "a reactivation fee of $2,088.13 will be charged if you fail to verify by september 21, 2025.",
+        "a reactivation fee of $4,132.18 will be charged if you fail to verify by october 11, 2025.",
+        "a reactivation fee of $3,358.89 will be charged if you fail to verify by november 04, 2025.",
+        "a reactivation fee of $497.94 will be charged if you fail to verify by october 12, 2025.",
+        "a reactivation fee of $504.00 will be charged if you fail to verify by december 21, 2025.",
+        "a reactivation fee of $2,140.51 will be charged if you fail to verify by october 03, 2025.",
+        "a reactivation fee of $3,900.81 will be charged if you fail to verify by december 23, 2025.",
+        "a reactivation fee of $4,108.97 will be charged if you fail to verify by september 09, 2025.",
+        "a reactivation fee of $3,293.17 will be charged if you fail to verify by september 05, 2025.",
+        "a reactivation fee of $281.19 will be charged if you fail to verify by december 18, 2025.",
+        "a reactivation fee of $639.51 will be charged if you fail to verify by october 03, 2025.",
+        "a reactivation fee of $1,239.18 will be charged if you fail to verify by october 11, 2025.",
+        "a reactivation fee of $4,743.12 will be charged if you fail to verify by november 05, 2025."
+      ],
+      "organization": [
+        "facebook security",
+        "ssa security",
+        "slack security"
+      ],
+      "company": [
+        "chase"
+      ],
+      "official communication method": [
+        "contact us at security-533@bankofamericacom-support.com for immediate assistance."
+      ],
+      "domain": [
+        "https://account.netflix-88.com",
+        "https://amazon-secure-77.com"
+      ]
+    }
+  },
+  "training_history": [
+    {
+      "round": 1,
+      "timestamp": "2025-08-27T18:21:10.213679",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.625,
+      "avg_extraction_reward": 0.8976190476190474,
+      "avg_verification_reward": 0.7,
+      "best_extraction_success": 0.6931842619047621,
+      "best_verification_success": 0.57525,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 2,
+      "timestamp": "2025-08-27T18:30:56.364479",
+      "batch_size": 8,
+      "batch_email_accuracy": 1.0,
+      "avg_claims_per_email": 5.0,
+      "avg_extraction_reward": 0.8309523809523809,
+      "avg_verification_reward": 0.8708333333333333,
+      "best_extraction_success": 0.7428324799500002,
+      "best_verification_success": 0.7051215250000001,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 3,
+      "timestamp": "2025-08-27T18:32:53.768588",
+      "batch_size": 8,
+      "batch_email_accuracy": 1.0,
+      "avg_claims_per_email": 5.125,
+      "avg_extraction_reward": 0.9125,
+      "avg_verification_reward": 0.6729166666666666,
+      "best_extraction_success": 0.8080231510856756,
+      "best_verification_success": 0.7188052325525003,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 4,
+      "timestamp": "2025-08-27T18:35:11.333726",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.5,
+      "avg_extraction_reward": 0.8946428571428572,
+      "avg_verification_reward": 0.73125,
+      "best_extraction_success": 0.8772667333417234,
+      "best_verification_success": 0.7069247092972504,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 5,
+      "timestamp": "2025-08-27T18:37:15.571435",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.375,
+      "avg_extraction_reward": 0.8779761904761905,
+      "avg_verification_reward": 0.7687499999999999,
+      "best_extraction_success": 0.9090604180312191,
+      "best_verification_success": 0.7362322383675254,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 6,
+      "timestamp": "2025-08-27T18:41:37.488849",
+      "batch_size": 8,
+      "batch_email_accuracy": 1.0,
+      "avg_claims_per_email": 5.25,
+      "avg_extraction_reward": 0.8916666666666666,
+      "avg_verification_reward": 0.7208333333333332,
+      "best_extraction_success": 0.9160345402702827,
+      "best_verification_success": 0.7363481130776955,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 7,
+      "timestamp": "2025-08-27T18:43:44.957756",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.75,
+      "avg_claims_per_email": 4.875,
+      "avg_extraction_reward": 0.8458333333333333,
+      "avg_verification_reward": 0.7208333333333333,
+      "best_extraction_success": 0.9192192356841992,
+      "best_verification_success": 0.7564419715929335,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 8,
+      "timestamp": "2025-08-27T18:55:01.023202",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.5,
+      "avg_extraction_reward": 0.9077380952380952,
+      "avg_verification_reward": 0.6479166666666667,
+      "best_extraction_success": 0.9206425976752602,
+      "best_verification_success": 0.7304461972912486,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 9,
+      "timestamp": "2025-08-27T19:47:07.424479",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 6.0,
+      "avg_extraction_reward": 0.9541666666666666,
+      "avg_verification_reward": 0.7125,
+      "best_extraction_success": 0.9479336083347383,
+      "best_verification_success": 0.7559952778253203,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 10,
+      "timestamp": "2025-08-27T19:49:07.795679",
+      "batch_size": 8,
+      "batch_email_accuracy": 1.0,
+      "avg_claims_per_email": 5.25,
+      "avg_extraction_reward": 0.8749999999999999,
+      "avg_verification_reward": 0.8145833333333333,
+      "best_extraction_success": 0.9620436004760242,
+      "best_verification_success": 0.7856835017811928,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 11,
+      "timestamp": "2025-08-27T19:51:06.971306",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.75,
+      "avg_claims_per_email": 5.25,
+      "avg_extraction_reward": 0.8708333333333333,
+      "avg_verification_reward": 0.7270833333333333,
+      "best_extraction_success": 0.9605168062723195,
+      "best_verification_success": 0.7537380054307297,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 12,
+      "timestamp": "2025-08-27T19:54:08.917736",
+      "batch_size": 8,
+      "batch_email_accuracy": 1.0,
+      "avg_claims_per_email": 4.875,
+      "avg_extraction_reward": 0.8279761904761905,
+      "avg_verification_reward": 0.7104166666666667,
+      "best_extraction_success": 0.8945617432619355,
+      "best_verification_success": 0.7580277843988912,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 13,
+      "timestamp": "2025-08-27T19:56:19.380145",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.0,
+      "avg_extraction_reward": 0.830952380952381,
+      "avg_verification_reward": 0.5166666666666667,
+      "best_extraction_success": 0.8711192875882642,
+      "best_verification_success": 0.6835660209779368,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 14,
+      "timestamp": "2025-08-27T19:58:20.757009",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.0,
+      "avg_extraction_reward": 0.7976190476190477,
+      "avg_verification_reward": 0.7583333333333333,
+      "best_extraction_success": 0.8727126273185112,
+      "best_verification_success": 0.7223196292929159,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 15,
+      "timestamp": "2025-08-27T20:02:46.373888",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.75,
+      "avg_claims_per_email": 5.375,
+      "avg_extraction_reward": 0.8809523809523809,
+      "avg_verification_reward": 0.6708333333333333,
+      "best_extraction_success": 0.9014867547836751,
+      "best_verification_success": 0.7223196292929159,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 16,
+      "timestamp": "2025-08-27T20:05:03.287789",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.75,
+      "avg_claims_per_email": 5.375,
+      "avg_extraction_reward": 0.8875000000000001,
+      "avg_verification_reward": 0.7541666666666667,
+      "best_extraction_success": 0.9191654598135692,
+      "best_verification_success": 0.7750788997272618,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 17,
+      "timestamp": "2025-08-27T20:12:57.269817",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.625,
+      "avg_extraction_reward": 0.9035714285714285,
+      "avg_verification_reward": 0.6270833333333333,
+      "best_extraction_success": 0.9223285185873336,
+      "best_verification_success": 0.7035792661110566,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 18,
+      "timestamp": "2025-08-27T20:15:54.707991",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.0,
+      "avg_extraction_reward": 0.8113095238095238,
+      "avg_verification_reward": 0.7645833333333333,
+      "best_extraction_success": 0.9086254553308639,
+      "best_verification_success": 0.7457096486471627,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 19,
+      "timestamp": "2025-08-27T20:17:47.558893",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.625,
+      "avg_claims_per_email": 5.0,
+      "avg_extraction_reward": 0.8500000000000001,
+      "avg_verification_reward": 0.5916666666666667,
+      "best_extraction_success": 0.8960442451183219,
+      "best_verification_success": 0.7048581487375352,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 20,
+      "timestamp": "2025-08-27T20:20:05.577355",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 5.375,
+      "avg_extraction_reward": 0.8904761904761904,
+      "avg_verification_reward": 0.7770833333333333,
+      "best_extraction_success": 0.8946448261198282,
+      "best_verification_success": 0.7609351004774034,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 21,
+      "timestamp": "2025-08-27T20:22:07.868927",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.75,
+      "avg_claims_per_email": 6.0,
+      "avg_extraction_reward": 0.9791666666666666,
+      "avg_verification_reward": 0.5770833333333334,
+      "best_extraction_success": 0.9377888233754973,
+      "best_verification_success": 0.7222657788652289,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 22,
+      "timestamp": "2025-08-27T20:23:55.790849",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.875,
+      "avg_claims_per_email": 4.75,
+      "avg_extraction_reward": 0.7261904761904762,
+      "avg_verification_reward": 0.7000000000000001,
+      "best_extraction_success": 0.9246480522407375,
+      "best_verification_success": 0.7328125674809018,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 23,
+      "timestamp": "2025-08-27T20:25:44.339882",
+      "batch_size": 8,
+      "batch_email_accuracy": 1.0,
+      "avg_claims_per_email": 5.0,
+      "avg_extraction_reward": 0.8172619047619047,
+      "avg_verification_reward": 0.7916666666666666,
+      "best_extraction_success": 0.9244101585037193,
+      "best_verification_success": 0.7471334929717979,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 24,
+      "timestamp": "2025-08-27T20:27:36.255772",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.625,
+      "avg_claims_per_email": 5.375,
+      "avg_extraction_reward": 0.8946428571428572,
+      "avg_verification_reward": 0.5333333333333333,
+      "best_extraction_success": 0.9334949544948612,
+      "best_verification_success": 0.6721915363921096,
+      "strategy_evolution_counts": {
+        "extraction": 0,
+        "verification": 0
+      }
+    },
+    {
+      "round": 25,
+      "timestamp": "2025-08-27T20:36:08.275664",
+      "batch_size": 8,
+      "batch_email_accuracy": 0.625,
+      "avg_claims_per_email": 0.0,
+      "avg_extraction_reward": 0.0,
+      "avg_verification_reward": 0.375,
+      "best_extraction_success": 0.7561309131408376,
+      "best_verification_success": 0.6040276300298479,
+      "strategy_evolution_counts": {
+        "extraction": 1,
+        "verification": 0
+      }
+    }
+  ]
+}
