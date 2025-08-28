@@ -22,8 +22,7 @@ export default function EmailList({ emails, onSelect, style }) {
       >
         {emails.length === 0 && (
           <div className="p-6 text-dim">
-            No emails yet. In DevTools run <code>PhishNetMail.mockLegit()</code> or{' '}
-            <code>PhishNetMail.mockPhish()</code>.
+            No emails yet. Run the demo.
           </div>
         )}
         {emails.map((m, i) => (

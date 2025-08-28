@@ -25,16 +25,19 @@ def processEmail(request):
         request.json = None
         request.form = {}
 
-    emails = request.json
+    emails = request.json['emails']
+    print("incoming: ",emails)
     emailResults = []
 
+    count = 0
     for e_json in emails:
+        count += 1
         print(e_json)
         email = Email()
-        email.ident = "demo"
+        email.ident = count
         email.content = e_json["body"]
-        email.sender = e_json["senderEmail"]
-        email.subject = e_json["title"]
+        email.sender = e_json["sender"]
+        email.subject = e_json["subject"]
         emailResults.append(ochestrator.evaluate_email(email))
 
 

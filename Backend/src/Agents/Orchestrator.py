@@ -60,7 +60,8 @@ class Orchestrator:
             idx = result["index"]
             final_confidence_score += result["confidence"] * self.weights[idx]
             summary += f"\n{result['agent_type']} : {result['summary']}\n"
-            highlight.extend(result["highlight"])
+            # highlight.extend(result["highlight"])
+            highlight.extend([result["highlight"]])
             usage = result["token_usage"]
             prompt_tokens += usage["prompt_tokens"]
             completion_tokens += usage["completion_tokens"]
