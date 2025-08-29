@@ -1,31 +1,26 @@
-from __future__ import annotations
-
 import sys
 from functools import lru_cache
-from typing import Dict, List, Optional
 from urllib.parse import urlparse
 from ddgs import DDGS
 
 
-def _domain_of(url: str) -> str:
+def get_domain(url: str) -> str:
     try:
-        netloc = urlparse(url).netloc
-        return netloc.lower()
+        return urlparse(url).netloc.lower()
     except Exception:
         return url
 
 
 class WebRetriever:
     """
-    DuckDuckGo web retriever that returns attributed results
-    (title, url, snippet), deduped by domain, with optional recency bias.
+    DuckDuckGo retriever returning (title, url, snippet) with domain dedupe.
     """
 
     def __init__(
         self,
         region: str = "us-en",
-        safesearch: str = "moderate",  # "off" | "moderate" | "strict"
-        timelimit: Optional[str] = None,  # e.g. "d" | "w" | "m" | "y"
+        safesearch: str = "moderate",  # off | moderate | strict
+        timelimit: str | None = None,  # d | w | m | y
         max_per_domain: int = 1,
         max_snippet_len: int = 320,
         stderr_logging: bool = True,
@@ -42,46 +37,48 @@ class WebRetriever:
             print(f"[WebRetriever] {msg}", file=sys.stderr)
 
     @lru_cache(maxsize=512)
-    def search(self, query: str, max_results: int = 6) -> List[Dict]:
+    def search(self, query: str, max_results: int = 6) -> list[dict]:
         """
-        Return a list of dicts: {"title": str, "url": str, "snippet": str, "domain": str}.
-        Dedupes by domain and truncates snippets for prompt hygiene.
+        Return [{"title","url","snippet","domain"}] (domain-deduped, snippet-truncated).
         """
-        results: List[Dict] = []
+        hits: list[dict] = []
         try:
-            with DDGS() as ddgs:
-                for res in ddgs.text(
+            with DDGS() as ddg:
+                for r in ddg.text(
                     query,
                     region=self.region,
                     safesearch=self.safesearch,
                     timelimit=self.timelimit,
-                    max_results=max_results * 2,  # fetch a few more before dedupe
+                    max_results=max_results * 2,  # fetch extras before dedupe
                 ):
-                    title = (res.get("title") or "").strip()
-                    url = (res.get("href") or res.get("url") or "").strip()
-                    snippet = (res.get("body") or res.get("snippet") or "").strip()
+                    title = (r.get("title") or "").strip()
+                    url = (r.get("href") or r.get("url") or "").strip()
+                    snippet = (r.get("body") or r.get("snippet") or "").strip()
                     if not url or not snippet:
                         continue
-                    domain = _domain_of(url)
+
+                    domain = get_domain(url)
                     if not domain:
                         continue
+
                     if self.max_snippet_len and len(snippet) > self.max_snippet_len:
                         snippet = snippet[: self.max_snippet_len].rstrip() + "…"
-                    results.append(
+
+                    hits.append(
                         {"title": title, "url": url, "snippet": snippet, "domain": domain}
                     )
         except Exception as e:
             self._log(f"error during DDG search: {e!r}")
             return []
 
-        # Deduplicate by domain (cap results per domain)
-        seen_count: Dict[str, int] = {}
-        uniq: List[Dict] = []
-        for r in results:
-            c = seen_count.get(r["domain"], 0)
+        # dedupe by domain (cap results per domain)
+        seen: dict[str, int] = {}
+        uniq: list[dict] = []
+        for h in hits:
+            c = seen.get(h["domain"], 0)
             if c < self.max_per_domain:
-                uniq.append(r)
-                seen_count[r["domain"]] = c + 1
+                uniq.append(h)
+                seen[h["domain"]] = c + 1
             if len(uniq) >= max_results:
                 break
         return uniq
@@ -89,7 +86,7 @@ class WebRetriever:
     @staticmethod
     def overlap_score(text: str, snippet: str) -> float:
         """
-        Extremely lightweight token overlap score in [0,1].
+        Lightweight token-overlap score in [0,1].
         """
         a = {t.lower() for t in text.split() if t.isalnum() or t.isalpha()}
         b = {t.lower() for t in snippet.split() if t.isalnum() or t.isalpha()}
@@ -99,11 +96,11 @@ class WebRetriever:
         denom = min(len(a), len(b))
         return inter / max(1, denom)
 
-    def rerank(self, query: str, hits: List[Dict]) -> List[Dict]:
+    def rerank(self, query: str, hits: list[dict]) -> list[dict]:
         """
-        Rerank by a naive overlap score of (title+snippet) with the query.
+        Rerank by overlap of (title + snippet) with the query.
         """
-        scored = []
+        scored: list[tuple[float, dict]] = []
         for h in hits:
             s = self.overlap_score(query, f"{h.get('title','')} {h.get('snippet','')}")
             scored.append((s, h))

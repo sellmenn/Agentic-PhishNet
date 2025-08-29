@@ -1,6 +1,5 @@
 """
 Fact Verification Agent (Inference) — Closed-Book, Training-Aligned
-Input parity with previous agent; outputs a similar JSON file.
 
 CLI:
   --input_file <path>      Read email text from file
@@ -12,24 +11,22 @@ CLI:
   --top_k_extract <int>    How many top extraction strategies to use (default: 2)
   --top_k_verify  <int>    How many top verification strategies to use (default: 3)
 
-Output JSON (similar to previous agent):
+Output JSON:
 {
-  "confidence_score": float,              # 0..1 (1 = all facts look legit)
+  "confidence_score": float,              # 0..1
   "summary": "Brief summary",
   "token_usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int},
-  "highlight": [                          # suspicious spans
+  "highlight": [
     {"s_idx": int, "e_idx": int, "reasoning": "why suspicious"},
     ...
   ]
 }
 
-Internally:
-- Extracts claims (one call), then verifies each claim (one call per claim), closed-book.
-- Uses evolved prompts from a trained checkpoint (top-K extraction + rotating verification strategies).
-- Aggregates per-claim results into confidence_score and highlights suspicious spans.
+Internals:
+- Extract claims (one call), then verify each claim (one call per claim), closed-book.
+- Uses prompts from a trained checkpoint (top-K extraction + rotating verification strategies).
+- Aggregates per-claim results into confidence_score and highlights.
 """
-
-from __future__ import annotations
 
 import argparse
 import json
@@ -37,9 +34,8 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
 
-from src.Util.web_rag import WebRetriever  # <-- local import
+from src.Util.web_rag import WebRetriever  # local import
 
 import openai
 
@@ -88,14 +84,14 @@ DEFAULT_EXTRACTION_PROMPT = (
 class FactVerificationAgent:
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         model: str = "gpt-4o-mini",
-        trained_path: Optional[str] = None,
+        trained_path: str | None = None,
         top_k_extract: int = 2,
         top_k_verify: int = 3,
         ddg_region: str = "us-en",
         ddg_safesearch: str = "moderate",
-        ddg_timelimit: Optional[str] = None,  # e.g., "m" (last month)
+        ddg_timelimit: str | None = None,  # e.g., "m" (last month)
     ):
         self.config = AgentConfig(
             base_model=model,
@@ -105,8 +101,8 @@ class FactVerificationAgent:
         self.client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
         # Trained strategy holders
-        self.extract_strategies: List[Dict] = []   # list of {"prompt", "success_rate", ...}
-        self.verify_strategies: List[Dict] = []    # list of {"prompt", "success_rate", ...}
+        self.extract_strategies: list[dict] = []   # [{"prompt", "success_rate", ...}, ...]
+        self.verify_strategies: list[dict] = []    # [{"prompt", "success_rate", ...}, ...]
 
         # Web retriever for RAG verification
         self.web_retriever = WebRetriever(
@@ -127,7 +123,7 @@ class FactVerificationAgent:
         text = text.replace("```", "")
         return text.strip()
 
-    def _load_trained_strategies(self, path: Optional[str]) -> None:
+    def _load_trained_strategies(self, path: str | None) -> None:
         try:
             if not path or not os.path.exists(path):
                 return
@@ -137,7 +133,7 @@ class FactVerificationAgent:
             extract = data.get("claim_extraction_strategies") or []
             verify = data.get("verification_strategies") or []
 
-            cleaned_extract = []
+            cleaned_extract: list[dict] = []
             for s in extract:
                 pr = self._sanitize_prompt(s.get("prompt", ""))
                 if pr:
@@ -148,7 +144,7 @@ class FactVerificationAgent:
                     })
             cleaned_extract.sort(key=lambda x: x["success_rate"], reverse=True)
 
-            cleaned_verify = []
+            cleaned_verify: list[dict] = []
             for s in verify:
                 pr = self._sanitize_prompt(s.get("prompt", ""))
                 if pr:
@@ -169,7 +165,7 @@ class FactVerificationAgent:
 
     # --------------- Internal helpers & parsing ---------------------
 
-    def _safe_float(self, x, default=0.5) -> float:
+    def _safe_float(self, x, default: float = 0.5) -> float:
         try:
             return float(x)
         except Exception:
@@ -184,7 +180,7 @@ class FactVerificationAgent:
                 return default
         return default
 
-    def _json_repair(self, broken_text: str) -> Optional[dict]:
+    def _json_repair(self, broken_text: str) -> dict | None:
         try:
             resp = self.client.chat.completions.create(
                 model=self.config.base_model,
@@ -212,7 +208,7 @@ class FactVerificationAgent:
             return f"Use the following extraction strategies as guidance:\n{joined}\n\n{DEFAULT_EXTRACTION_PROMPT}"
         return DEFAULT_EXTRACTION_PROMPT
 
-    def _extract_claims(self, email_content: str) -> Tuple[List[Dict], Dict]:
+    def _extract_claims(self, email_content: str) -> tuple[list[dict], dict]:
         if not email_content.strip():
             return [], {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
@@ -247,7 +243,7 @@ class FactVerificationAgent:
             claims = []
 
         # Normalize indices
-        normed = []
+        normed: list[dict] = []
         for c in claims:
             if not isinstance(c, dict):
                 continue
@@ -273,7 +269,7 @@ class FactVerificationAgent:
             "- If uncertain, lean suspicious"
         )
 
-    def _select_verify_prompt_for_index(self, idx: int) -> Optional[str]:
+    def _select_verify_prompt_for_index(self, idx: int) -> str | None:
         if not self.verify_strategies:
             return None
         top = self.verify_strategies[: self.config.top_k_verify]
@@ -285,32 +281,28 @@ class FactVerificationAgent:
     DOMAIN_RE = re.compile(r"\b([a-z0-9-]{1,63}\.)+[a-z]{2,24}\b", re.I)
     EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,24})\b", re.I)
 
-    def _extract_domains(self, text: str) -> List[str]:
+    def _extract_domains(self, text: str) -> list[str]:
         doms = set(self.DOMAIN_RE.findall(text) or [])
         for m in self.EMAIL_RE.finditer(text):
             doms.add(m.group(1).lower())
-        # normalize trailing dots (rare)
         return sorted({d.rstrip(".").lower() for d in doms})
 
     def _rewrite_query(self, claim_text: str) -> str:
         """
-        Simple heuristic rewrite:
-        - If we detect domains, add site:domain filters where appropriate.
-        - Otherwise, keep claim text.
+        If domains are present, add a site: filter; otherwise keep the claim text.
         """
         claim = " ".join(claim_text.split())
         domains = self._extract_domains(claim_text)
         if domains:
-            # Prefer the first domain; add a variant with site: for precision
             primary = domains[0]
-            return f'{claim} site:{primary}'
+            return f"{claim} site:{primary}"
         return claim
 
-    def _format_context(self, results: List[Dict], max_snips: int = 3) -> str:
+    def _format_context(self, results: list[dict], max_snips: int = 3) -> str:
         """
-        Keep short, attributed snippets with URLs for provenance.
+        Short, attributed snippets with URLs for provenance.
         """
-        lines = []
+        lines: list[str] = []
         for r in results[:max_snips]:
             title = r.get("title") or r["domain"]
             url = r["url"]
@@ -318,7 +310,7 @@ class FactVerificationAgent:
             lines.append(f"- [{title}] ({url}): {snippet}")
         return "\n".join(lines)
 
-    def _verify_one_claim(self, claim_text: str, strat_prompt: Optional[str]) -> Tuple[Dict, Dict]:
+    def _verify_one_claim(self, claim_text: str, strat_prompt: str | None) -> tuple[dict, dict]:
         base = self._verification_frame()
         guide = f"\n\nUse this verification strategy as guidance:\n{strat_prompt}" if strat_prompt else ""
 
@@ -367,11 +359,11 @@ CLAIM:
             obj = {
                 "is_legitimate": False,
                 "confidence": 0.5,
-                "reasoning": f"Error during verification",
+                "reasoning": "Error during verification",
                 "verification_source": "model_closed_book"
             }
 
-        # Normalize and set truthful source
+        # Normalize and set source
         source = "web_snippets" if hits else "model_closed_book"
         is_legit = 1 if bool(obj.get("is_legitimate", False)) else 0
         conf = max(0.0, min(1.0, self._safe_float(obj.get("confidence", 0.5), 0.5)))
@@ -385,15 +377,15 @@ CLAIM:
 
     # --------------------------- Public API -------------------------
 
-    def analyze_email(self, email_content: str) -> Dict:
+    def analyze_email(self, email_content: str) -> dict:
         """
-        End-to-end: extract claims, verify each, aggregate.
+        Extract claims, verify each, then aggregate.
         """
         # 1) Extract claims
         claims, usage_total = self._extract_claims(email_content)
 
         # 2) Verify per-claim
-        verifs: List[Dict] = []
+        verifs: list[dict] = []
         for i, c in enumerate(claims):
             ct = c.get("claim_text", "").strip()
             if not ct:
@@ -425,16 +417,15 @@ CLAIM:
                 weight += conf
             overall_conf = (weighted_sum / weight) if weight > 0 else 0.5
         else:
-            overall_conf = 0.5  # neutral when no claims identified
+            overall_conf = 0.5
 
         # 4) Highlights for suspicious spans
-        highlights: List[Dict] = []
+        highlights: list[dict] = []
         for i, (c, v) in enumerate(zip(claims, verifs)):
             if v["is_legitimate"] == 0:
                 s = max(0, int(c.get("start_index", 0)))
                 e = max(s, int(c.get("end_index", 0)))
                 reasoning = v.get("reasoning", "Suspicious claim")
-                # If indices are empty, try to locate by text
                 if e <= s:
                     ct = c.get("claim_text", "")
                     if ct:
