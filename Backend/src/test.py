@@ -15,7 +15,7 @@ def create_demo_email(file_name : str) -> Email:
 def test_lang_model():
     print("\n\n*** Testing Language Analysis Model ***")
     agent = LangModel()
-    email = create_demo_email("/Users/ariqkoh/Desktop/Agentic-PhishNet/Sample/positive/taisplunch.txt")
+    email = create_demo_email("/Users/holly/OneDrive/Documents/GitHub/Agentic-PhishNet/Sample/positive/taisplunch.txt")
     email_id = email.get_ident()
     agent.evaluate(email)
     e = agent.get_e_obj(email_id)
@@ -23,7 +23,7 @@ def test_lang_model():
 
 def test_orchestrator():
     print("\n\n*** Testing Orchestrator ***")
-    demo_email = create_demo_email("/Users/ariqkoh/Desktop/Agentic-PhishNet/Sample/positive/pearsonpdt.txt")
+    demo_email = create_demo_email("/Users/holly/OneDrive/Documents/GitHub/Agentic-PhishNet/Sample/positive/pearsonpdt.txt")
     weights = [0.5, 0.5]
     lang_agent = LangModel()
     fact_agent = FactModel()

@@ -3,3 +3,4 @@ openai>=1.0.0
 requests>=2.25.0
 numpy>=1.21.0
 dotenv
+ddgs 
