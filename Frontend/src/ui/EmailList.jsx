@@ -35,7 +35,9 @@ export default function EmailList({ emails, onSelect, style }) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <p className="font-medium text-ink truncate">{m.sender}</p>
-                {m.type === 'questionable' && <span className="badge">questionable</span>}
+                {(m.type === 'questionable' || m.type === 'flagged') && (
+                  <span className="badge">flagged</span>
+                )}
                 {m.type === 'phishing' && (
                   <span
                     className="badge"

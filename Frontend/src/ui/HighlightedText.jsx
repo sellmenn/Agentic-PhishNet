@@ -105,15 +105,28 @@ export default function HighlightedText({ text = '', detection }) {
 
         const hasF = seg.kinds.includes('Factual');
         const hasL = seg.kinds.includes('Language');
+        // Colors: Factual (cyan), Language (amber), overlap = blended gradient
+        const FACT_BG = 'rgba(34, 211, 238, 0.22)';   // cyan-400/22
+        const FACT_BORDER = 'rgba(34, 211, 238, 0.65)';
+        const LANG_BG = 'rgba(245, 158, 11, 0.22)';   // amber-500/22
+        const LANG_BORDER = 'rgba(245, 158, 11, 0.65)';
+        const MIX_BORDER = 'rgba(167, 139, 250, 0.65)'; // violet border for overlap
 
-        // no horizontal padding -> no extra gaps mid-word
-        const cls =
-          'relative inline align-baseline group ' +
-          (hasF && hasL
-            ? 'bg-amber-400/25 ring-2 ring-amber-400/60'
-            : hasF
-            ? 'bg-emerald-400/25 ring-1 ring-emerald-400/60'
-            : 'bg-yellow-300/25 ring-1 ring-yellow-400/60');
+        const cls = 'relative inline align-baseline group rounded';
+        const spanStyle = {
+          boxDecorationBreak: 'clone',
+          WebkitBoxDecorationBreak: 'clone',
+        };
+        if (hasF && hasL) {
+          spanStyle.backgroundImage = `linear-gradient(90deg, ${FACT_BG} 0 50%, ${LANG_BG} 50% 100%)`;
+          spanStyle.boxShadow = `0 0 0 2px ${MIX_BORDER}`;
+        } else if (hasF) {
+          spanStyle.backgroundColor = FACT_BG;
+          spanStyle.boxShadow = `0 0 0 1px ${FACT_BORDER}`;
+        } else {
+          spanStyle.backgroundColor = LANG_BG;
+          spanStyle.boxShadow = `0 0 0 1px ${LANG_BORDER}`;
+        }
 
         // Tooltip items for THIS spliced piece:
         // choose entries that cover seg.s..seg.e, then per type keep most specific (smallest width)
@@ -138,10 +151,7 @@ export default function HighlightedText({ text = '', detection }) {
           <span
             key={i}
             className={cls}
-            style={{
-              boxDecorationBreak: 'clone',
-              WebkitBoxDecorationBreak: 'clone',
-            }}
+            style={spanStyle}
           >
             {slice}
             <TooltipCard
