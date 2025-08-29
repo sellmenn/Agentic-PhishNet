@@ -29,6 +29,8 @@ Internally:
 - Aggregates per-claim results into confidence_score and highlights suspicious spans.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -37,7 +39,10 @@ import sys
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
+from src.Util.web_rag import WebRetriever  # <-- local import
+
 import openai
+
 
 # ----------------------------- Config -----------------------------
 
@@ -52,14 +57,14 @@ class AgentConfig:
     top_k_extract: int = 2
     top_k_verify: int = 3
 
-# Strict JSON schema used during verification (mirrors training)
+
 RESPONSE_SCHEMA = """
 Return ONLY valid JSON with EXACT keys:
 {
   "is_legitimate": true or false,
   "confidence": <number between 0.0 and 1.0>,
   "reasoning": "<one concise sentence>",
-  "verification_source": "model_closed_book"
+  "verification_source": "model_closed_book" or "web_snippets"
 }
 No markdown, no code fences, no extra keys, no extra text.
 """.strip()
@@ -77,6 +82,7 @@ DEFAULT_EXTRACTION_PROMPT = (
     'procedural/other","start_index":0,"end_index":10,"verifiable":true/false,"verification_method":"..."}]}'
 )
 
+
 # ----------------------------- Agent ------------------------------
 
 class FactVerificationAgent:
@@ -87,6 +93,9 @@ class FactVerificationAgent:
         trained_path: Optional[str] = None,
         top_k_extract: int = 2,
         top_k_verify: int = 3,
+        ddg_region: str = "us-en",
+        ddg_safesearch: str = "moderate",
+        ddg_timelimit: Optional[str] = None,  # e.g., "m" (last month)
     ):
         self.config = AgentConfig(
             base_model=model,
@@ -99,41 +108,35 @@ class FactVerificationAgent:
         self.extract_strategies: List[Dict] = []   # list of {"prompt", "success_rate", ...}
         self.verify_strategies: List[Dict] = []    # list of {"prompt", "success_rate", ...}
 
+        # Web retriever for RAG verification
+        self.web_retriever = WebRetriever(
+            region=ddg_region,
+            safesearch=ddg_safesearch,
+            timelimit=ddg_timelimit,
+            max_per_domain=1,
+        )
+
         # Load trained strategies if available
-        trained_path = os.getenv("FACT_TRAINED_CHECKPOINT_PATH")
+        trained_path = trained_path or os.getenv("FACT_TRAINED_CHECKPOINT_PATH")
         self._load_trained_strategies(trained_path)
 
     # --------------- Strategy loading ---------------------
 
     def _sanitize_prompt(self, text: str) -> str:
-        # Strip code fences like ```json ... ``` or ```
         text = re.sub(r"```[a-zA-Z]*\s*", "", text or "")
         text = text.replace("```", "")
         return text.strip()
 
-    def _load_trained_strategies(self, path: str) -> None:
-        """
-        Load strategies from a final training results JSON. Supports both fact-agent and (as fallback)
-        language-agent checkpoints:
-          - Fact agent: claim_extraction_strategies, verification_strategies
-          - Language agent: defender_strategies (ignored here)
-        """
+    def _load_trained_strategies(self, path: Optional[str]) -> None:
         try:
-            if not os.path.exists(path):
+            if not path or not os.path.exists(path):
                 return
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-            # Fact agent fields
             extract = data.get("claim_extraction_strategies") or []
             verify = data.get("verification_strategies") or []
 
-            # Some checkpoints may nest strategies inside another object
-            if not extract and isinstance(data.get("knowledge_base"), dict):
-                # nothing else to do; just robustness
-                pass
-
-            # Clean and sort extraction strategies
             cleaned_extract = []
             for s in extract:
                 pr = self._sanitize_prompt(s.get("prompt", ""))
@@ -145,7 +148,6 @@ class FactVerificationAgent:
                     })
             cleaned_extract.sort(key=lambda x: x["success_rate"], reverse=True)
 
-            # Clean and sort verification strategies
             cleaned_verify = []
             for s in verify:
                 pr = self._sanitize_prompt(s.get("prompt", ""))
@@ -160,8 +162,8 @@ class FactVerificationAgent:
             self.extract_strategies = cleaned_extract
             self.verify_strategies = cleaned_verify
 
-        except Exception:
-            # Fail soft: run with defaults if file is malformed
+        except Exception as e:
+            print(f"[Agent] Failed to load strategies: {e!r}", file=sys.stderr)
             self.extract_strategies = []
             self.verify_strategies = []
 
@@ -183,7 +185,6 @@ class FactVerificationAgent:
         return default
 
     def _json_repair(self, broken_text: str) -> Optional[dict]:
-        """Coerce malformed model output into valid JSON per schema (one-shot)."""
         try:
             resp = self.client.chat.completions.create(
                 model=self.config.base_model,
@@ -205,9 +206,6 @@ class FactVerificationAgent:
     # ---------------------- Extraction phase -----------------------
 
     def _compose_extraction_instruction(self) -> str:
-        """
-        Combine top-K extraction strategies (if any) + the default extraction prompt.
-        """
         if self.extract_strategies:
             top = self.extract_strategies[: self.config.top_k_extract]
             joined = "\n\n".join([f"[Extraction Strategy {i+1}]\n{e['prompt']}" for i, e in enumerate(top)])
@@ -215,7 +213,6 @@ class FactVerificationAgent:
         return DEFAULT_EXTRACTION_PROMPT
 
     def _extract_claims(self, email_content: str) -> Tuple[List[Dict], Dict]:
-        """Return (claims, usage)."""
         if not email_content.strip():
             return [], {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
 
@@ -238,17 +235,18 @@ class FactVerificationAgent:
             txt = resp.choices[0].message.content.strip()
             obj = self._parse_json_block(txt, default={"claims": []}) or {"claims": []}
             claims = obj.get("claims", [])
-        except Exception:
+        except Exception as e:
+            print(f"[Agent] Extraction error: {e!r}", file=sys.stderr)
             usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
             claims = []
 
-        # Cap to avoid excessive per-claim calls
+        # Cap
         if isinstance(claims, list):
             claims = claims[: self.config.max_claims_per_email]
         else:
             claims = []
 
-        # Normalize/guard indices
+        # Normalize indices
         normed = []
         for c in claims:
             if not isinstance(c, dict):
@@ -269,28 +267,68 @@ class FactVerificationAgent:
 
     def _verification_frame(self) -> str:
         return (
-            "Verify the factual legitimacy of the claim conservatively (closed-book):\n"
-            "- Does the structure match real-world practices (e.g., domains, contact formats, processes)?\n"
-            "- Is there obvious typosquatting or unrealistic offers?\n"
-            "- Is it internally coherent with typical policies and timelines?\n"
-            "If uncertain, lean suspicious."
+            "Verify the factual legitimacy of the claim conservatively:\n"
+            "- Check structural plausibility (domains, contact formats, processes)\n"
+            "- Watch for typosquatting, unrealistic offers, incoherent timelines\n"
+            "- If uncertain, lean suspicious"
         )
 
     def _select_verify_prompt_for_index(self, idx: int) -> Optional[str]:
-        """
-        Rotate through top-K verification strategies; returns strategy prompt or None if none loaded.
-        """
         if not self.verify_strategies:
             return None
         top = self.verify_strategies[: self.config.top_k_verify]
         strat = top[idx % len(top)]
         return strat.get("prompt")
 
+    # ---- Query rewriting helpers ----
+
+    DOMAIN_RE = re.compile(r"\b([a-z0-9-]{1,63}\.)+[a-z]{2,24}\b", re.I)
+    EMAIL_RE = re.compile(r"\b[A-Z0-9._%+-]+@([A-Z0-9.-]+\.[A-Z]{2,24})\b", re.I)
+
+    def _extract_domains(self, text: str) -> List[str]:
+        doms = set(self.DOMAIN_RE.findall(text) or [])
+        for m in self.EMAIL_RE.finditer(text):
+            doms.add(m.group(1).lower())
+        # normalize trailing dots (rare)
+        return sorted({d.rstrip(".").lower() for d in doms})
+
+    def _rewrite_query(self, claim_text: str) -> str:
+        """
+        Simple heuristic rewrite:
+        - If we detect domains, add site:domain filters where appropriate.
+        - Otherwise, keep claim text.
+        """
+        claim = " ".join(claim_text.split())
+        domains = self._extract_domains(claim_text)
+        if domains:
+            # Prefer the first domain; add a variant with site: for precision
+            primary = domains[0]
+            return f'{claim} site:{primary}'
+        return claim
+
+    def _format_context(self, results: List[Dict], max_snips: int = 3) -> str:
+        """
+        Keep short, attributed snippets with URLs for provenance.
+        """
+        lines = []
+        for r in results[:max_snips]:
+            title = r.get("title") or r["domain"]
+            url = r["url"]
+            snippet = r.get("snippet", "")[:320]
+            lines.append(f"- [{title}] ({url}): {snippet}")
+        return "\n".join(lines)
+
     def _verify_one_claim(self, claim_text: str, strat_prompt: Optional[str]) -> Tuple[Dict, Dict]:
-        """Closed-book verify a single claim using (optional) trained strategy guidance. Returns (verification, usage)."""
         base = self._verification_frame()
         guide = f"\n\nUse this verification strategy as guidance:\n{strat_prompt}" if strat_prompt else ""
-        prompt = f"""{base}{guide}
+
+        # Retrieve web context for RAG verification
+        query = self._rewrite_query(claim_text)
+        hits = self.web_retriever.search(query, max_results=6)
+        hits = self.web_retriever.rerank(query, hits)
+        context_block = f"\n\nWeb snippets (attributed):\n{self._format_context(hits)}" if hits else ""
+
+        prompt = f"""{base}{guide}{context_block}
 
 CLAIM:
 {claim_text}
@@ -324,15 +362,17 @@ CLAIM:
                     "verification_source": "model_closed_book"
                 }
         except Exception as e:
+            print(f"[Agent] Verification error: {e!r}", file=sys.stderr)
             usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
             obj = {
                 "is_legitimate": False,
                 "confidence": 0.5,
-                "reasoning": f"Error: {e}",
+                "reasoning": f"Error during verification",
                 "verification_source": "model_closed_book"
             }
 
-        # Normalize → integer 0/1
+        # Normalize and set truthful source
+        source = "web_snippets" if hits else "model_closed_book"
         is_legit = 1 if bool(obj.get("is_legitimate", False)) else 0
         conf = max(0.0, min(1.0, self._safe_float(obj.get("confidence", 0.5), 0.5)))
         reasoning = str(obj.get("reasoning", ""))[:500]
@@ -340,15 +380,14 @@ CLAIM:
             "is_legitimate": is_legit,
             "confidence": conf,
             "reasoning": reasoning,
-            "verification_source": "model_closed_book"
+            "verification_source": source
         }, usage
 
     # --------------------------- Public API -------------------------
 
     def analyze_email(self, email_content: str) -> Dict:
         """
-        End-to-end: extract claims (guided by trained extraction strategies), verify each claim
-        (rotating through trained verification strategies), then return the simplified schema.
+        End-to-end: extract claims, verify each, aggregate.
         """
         # 1) Extract claims
         claims, usage_total = self._extract_claims(email_content)
@@ -388,7 +427,7 @@ CLAIM:
         else:
             overall_conf = 0.5  # neutral when no claims identified
 
-        # 4) Highlights for suspicious spans (is_legitimate == 0)
+        # 4) Highlights for suspicious spans
         highlights: List[Dict] = []
         for i, (c, v) in enumerate(zip(claims, verifs)):
             if v["is_legitimate"] == 0:
@@ -406,7 +445,6 @@ CLAIM:
                 if e > s:
                     highlights.append({"s_idx": s, "e_idx": e, "reasoning": reasoning})
 
-        # 5) Summary
         suspicious_count = sum(1 for v in verifs if v["is_legitimate"] == 0)
         summary = (
             f"Verified {len(verifs)} factual claim(s); "
@@ -420,3 +458,56 @@ CLAIM:
             "token_usage": usage_total,
             "highlight": highlights
         }
+
+
+# ------------------------------- CLI --------------------------------
+
+def _read_input_text(args: argparse.Namespace) -> str:
+    if args.input_string:
+        return args.input_string
+    if args.input_file:
+        with open(args.input_file, "r", encoding="utf-8") as f:
+            return f.read()
+    raise SystemExit("Provide --input_string or --input_file")
+
+
+def main():
+    p = argparse.ArgumentParser(description="Fact Verification Agent (with web RAG)")
+    p.add_argument("--input_file", type=str, help="Path to email text")
+    p.add_argument("--input_string", type=str, help="Email text directly")
+    p.add_argument("--output_file", type=str, default="fact_verification_output.json")
+    p.add_argument("--model", type=str, default="gpt-4o-mini")
+    p.add_argument("--api_key", type=str, default=None)
+    p.add_argument("--trained_path", type=str, default=None)
+    p.add_argument("--top_k_extract", type=int, default=2)
+    p.add_argument("--top_k_verify", type=int, default=3)
+
+    # DDG knobs
+    p.add_argument("--ddg_region", type=str, default="us-en")
+    p.add_argument("--ddg_safesearch", type=str, default="moderate")
+    p.add_argument("--ddg_timelimit", type=str, default=None, help='e.g. "m" (last month)')
+
+    args = p.parse_args()
+
+    agent = FactVerificationAgent(
+        api_key=args.api_key,
+        model=args.model,
+        trained_path=args.trained_path,
+        top_k_extract=args.top_k_extract,
+        top_k_verify=args.top_k_verify,
+        ddg_region=args.ddg_region,
+        ddg_safesearch=args.ddg_safesearch,
+        ddg_timelimit=args.ddg_timelimit,
+    )
+
+    email_text = _read_input_text(args)
+    result = agent.analyze_email(email_text)
+
+    with open(args.output_file, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+    print(f"Wrote {args.output_file}")
+
+
+if __name__ == "__main__":
+    main()
