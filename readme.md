@@ -88,19 +88,19 @@ The frontend application will typically open in your web browser at `http://loca
 
 Agentic-PhishNet is built with a suite of powerful features designed to provide comprehensive and transparent phishing detection:
 
-*   **Multi-Agent Architecture:** At its core, Agentic-PhishNet employs a sophisticated multi-agent system. An **Orchestrator Agent** acts as the central coordinator, receiving incoming text (e.g., email content) and intelligently distributing it to specialized sub-agents. It then aggregates their individual analyses and confidence scores to form a unified, final verdict. This distributed approach ensures a thorough examination of all aspects of a potential phishing attempt.
+- **Multi-Agent Architecture:** At its core, Agentic-PhishNet employs a sophisticated multi-agent system. An **Orchestrator Agent** acts as the central coordinator, receiving incoming text (e.g., email content) and intelligently distributing it to specialized sub-agents. It then aggregates their individual analyses and confidence scores to form a unified, final verdict. This distributed approach ensures a thorough examination of all aspects of a potential phishing attempt.
 
-*   **Fact-Verification with Retrieval Augmented Generation (RAG):** The **Fact-Verification Agent** is specifically designed to scrutinize the factual claims within the input text. This agent is now significantly enhanced with a **Retrieval Augmented Generation (RAG) system**. This means that beyond its internal knowledge, the agent can perform real-time web lookups to verify information, cross-reference details, and identify inconsistencies. For instance, it can validate company names, contact information, financial figures, and procedural claims against external, credible sources. This RAG capability makes the Fact-Verification Agent exceptionally robust against novel and context-specific phishing lures, as it can adapt its verification process based on the latest available information.
+- **Fact-Verification with Retrieval Augmented Generation (RAG):** The **Fact-Verification Agent** is specifically designed to scrutinize the factual claims within the input text. This agent is now significantly enhanced with a **Retrieval Augmented Generation (RAG) system**. This means that beyond its internal knowledge, the agent can perform real-time web lookups to verify information, cross-reference details, and identify inconsistencies. For instance, it can validate company names, contact information, financial figures, and procedural claims against external, credible sources. This RAG capability makes the Fact-Verification Agent exceptionally robust against novel and context-specific phishing lures, as it can adapt its verification process based on the latest available information.
 
-*   **Language Analysis:** The **Language Analysis Agent** focuses on the subtle, yet critical, linguistic and stylistic cues that often betray a phishing attempt. It analyzes elements such as manufactured urgency, threatening or manipulative tone, grammatical anomalies, generic greetings, and various social engineering tactics. By understanding the persuasive and deceptive language patterns, this agent provides a crucial layer of defense against even well-crafted scams.
+- **Language Analysis:** The **Language Analysis Agent** focuses on the subtle, yet critical, linguistic and stylistic cues that often betray a phishing attempt. It analyzes elements such as manufactured urgency, threatening or manipulative tone, grammatical anomalies, generic greetings, and various social engineering tactics. By understanding the persuasive and deceptive language patterns, this agent provides a crucial layer of defense against even well-crafted scams.
 
-*   **Adversarial Self-Play Training:** A key innovation of Agentic-PhishNet is its continuous learning mechanism. Our agents are not trained on static datasets but are instead refined through an **adversarial self-play methodology**, inspired by the SELF-REDTEAM framework [Liu et al., 2025](https://arxiv.org/abs/2506.07468). In this paradigm, an 'Attacker' LLM continuously generates increasingly sophisticated phishing scenarios, while our 'Defender' agents (Fact-Verification and Language Analysis) learn to detect them. This iterative process ensures that the system constantly adapts and improves its detection capabilities against novel and evolving phishing techniques, staying ahead of malicious actors.
+- **Adversarial Self-Play Training:** A key innovation of Agentic-PhishNet is its continuous learning mechanism. Our agents are not trained on static datasets but are instead refined through an **adversarial self-play methodology**, inspired by the SELF-REDTEAM framework [Liu et al., 2025](https://arxiv.org/abs/2506.07468). In this paradigm, an 'Attacker' LLM continuously generates increasingly sophisticated phishing scenarios, while our 'Defender' agents (Fact-Verification and Language Analysis) learn to detect them. This iterative process ensures that the system constantly adapts and improves its detection capabilities against novel and evolving phishing techniques, staying ahead of malicious actors.
 
-*   **Transparent & Explainable AI:** Agentic-PhishNet prioritizes transparency. The user interface provides detailed reasoning for its verdicts, going beyond a simple phishing/non-phishing label. It highlights suspicious phrases directly within the input text and offers agent-specific insights into *why* certain content was flagged. This explainability builds user trust and educates them on how to identify sophisticated phishing attempts.
+- **Transparent & Explainable AI:** Agentic-PhishNet prioritizes transparency. The user interface provides detailed reasoning for its verdicts, going beyond a simple phishing/non-phishing label. It highlights suspicious phrases directly within the input text and offers agent-specific insights into _why_ certain content was flagged. This explainability builds user trust and educates them on how to identify sophisticated phishing attempts.
 
-*   **Intuitive Web Interface:** The project includes a user-friendly web interface developed with React.js. This interface allows users to easily submit text for analysis, view the real-time processing by the agents, and visualize the detailed analysis results, including highlighted sections and confidence scores. The design focuses on clarity and ease of use, making advanced phishing detection accessible.
+- **Intuitive Web Interface:** The project includes a user-friendly web interface developed with React.js. This interface allows users to easily submit text for analysis, view the real-time processing by the agents, and visualize the detailed analysis results, including highlighted sections and confidence scores. The design focuses on clarity and ease of use, making advanced phishing detection accessible.
 
-*   **Scalable & Modular Design:** Agentic-PhishNet is built with a modular architecture, allowing for easy integration of new agents or enhancements to existing ones. This design ensures that the framework can adapt to future threats and expand its capabilities to cover various forms of digital communication beyond email, such as text messages, social media posts, or document analysis.
+- **Scalable & Modular Design:** Agentic-PhishNet is built with a modular architecture, allowing for easy integration of new agents or enhancements to existing ones. This design ensures that the framework can adapt to future threats and expand its capabilities to cover various forms of digital communication beyond email, such as text messages, social media posts, or document analysis.
 
 ## Technical Stack
 
@@ -110,24 +110,25 @@ Agentic-PhishNet is a full-stack application, leveraging a combination of robust
 
 The backend serves as the computational core, handling API requests, orchestrating agent interactions, and managing LLM calls.
 
-*   **Django:** A high-level Python web framework that enables rapid development of secure and maintainable websites. In Agentic-PhishNet, Django is used to build the RESTful API that interfaces with the frontend, manages incoming requests, and routes them to the appropriate agent logic.
-*   **`openai` Library:** The official Python client library for the OpenAI API. This library is crucial for making requests to OpenAI's large language models, which serve as the foundation for our Fact-Verification and Language Analysis Agents.
-*   **`numpy`:** A fundamental package for scientific computing with Python. It is used for numerical operations, particularly in processing and aggregating confidence scores and other quantitative data from the LLM agents.
-*   **`requests`:** A popular HTTP library for Python, used for making web requests. This is particularly relevant for the RAG system within the Fact-Verification Agent, enabling it to fetch information from external web sources.
-*   **`dotenv`:** A Python library that loads environment variables from a `.env` file. This is used for securely managing sensitive information such as API keys without hardcoding them into the codebase.
-*   **`concurrent.futures`:** Part of Python's standard library, this module provides a high-level interface for asynchronously executing callables. Specifically, `ThreadPoolExecutor` is utilized in the Orchestrator Agent to run the Fact-Verification and Language Analysis Agents in parallel, significantly speeding up the analysis process.
+- **Django:** A high-level Python web framework that enables rapid development of secure and maintainable websites. In Agentic-PhishNet, Django is used to build the RESTful API that interfaces with the frontend, manages incoming requests, and routes them to the appropriate agent logic.
+- **`openai` Library:** The official Python client library for the OpenAI API. This library is crucial for making requests to OpenAI's large language models, which serve as the foundation for our Fact-Verification and Language Analysis Agents.
+- **`numpy`:** A fundamental package for scientific computing with Python. It is used for numerical operations, particularly in processing and aggregating confidence scores and other quantitative data from the LLM agents.
+- **`requests`:** A popular HTTP library for Python, used for making web requests.
+- **`dotenv`:** A Python library that loads environment variables from a `.env` file. This is used for securely managing sensitive information such as API keys without hardcoding them into the codebase.
+- **`concurrent.futures`:** Part of Python's standard library, this module provides a high-level interface for asynchronously executing callables. Specifically, `ThreadPoolExecutor` is utilized in the Orchestrator Agent to run the Fact-Verification and Language Analysis Agents in parallel, significantly speeding up the analysis process.
+- **`ddgs`:** A Python library for programmatic access to DuckDuckGo search. In Agentic-PhishNet, it underpins the WebRetriever module, which performs web queries to support Retrieval-Augmented Generation (RAG). Search results are returned as titles, snippets, and URLs, then deduplicated and re-ranked by relevance before being passed to the Fact-Verification Agent as external evidence for claim validation.
 
 ### Frontend (JavaScript/React)
 
 The frontend provides the interactive user interface, allowing users to submit content for analysis and visualize the results.
 
-*   **React.js:** A declarative, component-based JavaScript library for building user interfaces. React enables the creation of dynamic and responsive web applications, providing a smooth and intuitive experience for users interacting with Agentic-PhishNet.
-*   **Vite:** A next-generation frontend tooling that provides an extremely fast development experience. Vite is used as the build tool for the React application, offering rapid hot module replacement (HMR) and optimized production builds.
-*   **Prettier:** An opinionated code formatter. It ensures consistent code style across the entire frontend codebase, improving readability and maintainability for developers.
+- **React.js:** A declarative, component-based JavaScript library for building user interfaces. React enables the creation of dynamic and responsive web applications, providing a smooth and intuitive experience for users interacting with Agentic-PhishNet.
+- **Vite:** A next-generation frontend tooling that provides an extremely fast development experience. Vite is used as the build tool for the React application, offering rapid hot module replacement (HMR) and optimized production builds.
+- **Prettier:** An opinionated code formatter. It ensures consistent code style across the entire frontend codebase, improving readability and maintainability for developers.
 
 ### LLM Models
 
-*   **`gpt-4o-mini`:** This specific OpenAI model is configured as the default base model for both the Fact-Verification and Language Analysis Agents. Its efficiency and performance make it suitable for real-time analysis within the framework. The choice of LLM is configurable, allowing for flexibility to integrate other models as they become available or as specific performance requirements dictate.
+- **`gpt-4o-mini`:** This specific OpenAI model is configured as the default base model for both the Fact-Verification and Language Analysis Agents. Its efficiency and performance make it suitable for real-time analysis within the framework. The choice of LLM is configurable, allowing for flexibility to integrate other models as they become available or as specific performance requirements dictate.
 
 ## Project Structure
 
@@ -161,11 +162,12 @@ Agentic-PhishNet/
 
 ```bibtex
 @misc{liu2025chasingmovingtargetsonline,
-      title={Chasing Moving Targets with Online Self-Play Reinforcement Learning for Safer Language Models}, 
+      title={Chasing Moving Targets with Online Self-Play Reinforcement Learning for Safer Language Models},
       author={Mickel Liu and Liwei Jiang and Yancheng Liang and Simon Shaolei Du and Yejin Choi and Tim Althoff and Natasha Jaques},
       year={2025},
       eprint={2506.07468},
       archivePrefix={arXiv},
       primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2506.07468}, 
+      url={https://arxiv.org/abs/2506.07468},
 }
+```
