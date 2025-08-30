@@ -99,10 +99,7 @@ Agentic-PhishNet is built with a suite of powerful features designed to provide 
 
 *   **Adversarial Self-Play Training:** A key innovation of Agentic-PhishNet is its continuous learning mechanism. Our agents are not trained on static datasets but are instead refined through an **adversarial self-play methodology**, inspired by the SELF-REDTEAM framework. In this paradigm, an 'Attacker' LLM continuously generates increasingly sophisticated phishing scenarios, while our 'Defender' agents (Fact-Verification and Language Analysis) learn to detect them. This iterative process ensures that the system constantly adapts and improves its detection capabilities against novel and evolving phishing techniques, staying ahead of malicious actors.
 
-*   **Transparent & Explainable AI:** Agentic-PhishNet prioritizes transparency. The user interface provides detailed reasoning for its verdicts, going beyond a simple 
-
-
-phishing/non-phishing label. It highlights suspicious phrases directly within the input text and offers agent-specific insights into *why* certain content was flagged. This explainability builds user trust and educates them on how to identify sophisticated phishing attempts.
+*   **Transparent & Explainable AI:** Agentic-PhishNet prioritizes transparency. The user interface provides detailed reasoning for its verdicts, going beyond a simple phishing/non-phishing label. It highlights suspicious phrases directly within the input text and offers agent-specific insights into *why* certain content was flagged. This explainability builds user trust and educates them on how to identify sophisticated phishing attempts.
 
 *   **Intuitive Web Interface:** The project includes a user-friendly web interface developed with React.js. This interface allows users to easily submit text for analysis, view the real-time processing by the agents, and visualize the detailed analysis results, including highlighted sections and confidence scores. The design focuses on clarity and ease of use, making advanced phishing detection accessible.
 
