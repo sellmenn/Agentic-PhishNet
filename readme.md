@@ -163,17 +163,6 @@ Agentic-PhishNet/
     └── scams/                # Examples of phishing emails.
 ```
 
-## Contributing
 
-We welcome contributions to Agentic-PhishNet! If you have suggestions for improvements, bug fixes, or new features, please feel free to:
-
-1.  Fork the repository.
-2.  Create a new branch for your feature or bug fix.
-3.  Make your changes and ensure tests pass.
-4.  Submit a pull request with a clear description of your changes.
-
-## License
-
-[Specify your license here, e.g., MIT License]
 
 
