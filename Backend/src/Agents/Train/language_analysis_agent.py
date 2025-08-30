@@ -81,7 +81,7 @@ class LanguageAnalysisAgent:
             '  "summary": "string",\n'
             '  "token_usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int},\n'
             '  "highlight": [{"s_idx": int, "e_idx": int, "reasoning": "string"}]\n}\n'
-            "Give correct character indices from the original email text. No extra keys or text."
+            "IMPORTANT: Ensure that the start and end index do not end up in the middle of words. The phrase highlighted should form full words."
         )
 
     def _load_trained_strategies(self, path: Optional[str]) -> List[str]:
