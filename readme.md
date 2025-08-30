@@ -94,7 +94,17 @@ Agentic-PhishNet is built with a suite of powerful features designed to provide 
 
 *   **Language Analysis:** The **Language Analysis Agent** focuses on the subtle, yet critical, linguistic and stylistic cues that often betray a phishing attempt. It analyzes elements such as manufactured urgency, threatening or manipulative tone, grammatical anomalies, generic greetings, and various social engineering tactics. By understanding the persuasive and deceptive language patterns, this agent provides a crucial layer of defense against even well-crafted scams.
 
-*   **Adversarial Self-Play Training:** A key innovation of Agentic-PhishNet is its continuous learning mechanism. Our agents are not trained on static datasets but are instead refined through an **adversarial self-play methodology**, inspired by the SELF-REDTEAM framework. In this paradigm, an 'Attacker' LLM continuously generates increasingly sophisticated phishing scenarios, while our 'Defender' agents (Fact-Verification and Language Analysis) learn to detect them. This iterative process ensures that the system constantly adapts and improves its detection capabilities against novel and evolving phishing techniques, staying ahead of malicious actors.
+*   **Adversarial Self-Play Training:** A key innovation of Agentic-PhishNet is its continuous learning mechanism. Our agents are not trained on static datasets but are instead refined through an **adversarial self-play methodology**, inspired by the SELF-REDTEAM framework [Liu et al., 2025](https://arxiv.org/abs/2506.07468). In this paradigm, an 'Attacker' LLM continuously generates increasingly sophisticated phishing scenarios, while our 'Defender' agents (Fact-Verification and Language Analysis) learn to detect them. This iterative process ensures that the system constantly adapts and improves its detection capabilities against novel and evolving phishing techniques, staying ahead of malicious actors.
+
+@misc{liu2025chasingmovingtargetsonline,
+      title={Chasing Moving Targets with Online Self-Play Reinforcement Learning for Safer Language Models}, 
+      author={Mickel Liu and Liwei Jiang and Yancheng Liang and Simon Shaolei Du and Yejin Choi and Tim Althoff and Natasha Jaques},
+      year={2025},
+      eprint={2506.07468},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2506.07468}, 
+}
 
 *   **Transparent & Explainable AI:** Agentic-PhishNet prioritizes transparency. The user interface provides detailed reasoning for its verdicts, going beyond a simple phishing/non-phishing label. It highlights suspicious phrases directly within the input text and offers agent-specific insights into *why* certain content was flagged. This explainability builds user trust and educates them on how to identify sophisticated phishing attempts.
 
@@ -157,6 +167,15 @@ Agentic-PhishNet/
     └── scams/                # Examples of phishing emails.
 ```
 
+## Citation
 
-
-
+```bibtex
+@misc{liu2025chasingmovingtargetsonline,
+      title={Chasing Moving Targets with Online Self-Play Reinforcement Learning for Safer Language Models}, 
+      author={Mickel Liu and Liwei Jiang and Yancheng Liang and Simon Shaolei Du and Yejin Choi and Tim Althoff and Natasha Jaques},
+      year={2025},
+      eprint={2506.07468},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2506.07468}, 
+}
