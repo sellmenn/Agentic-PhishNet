@@ -33,6 +33,7 @@ import json
 import os
 import re
 import sys
+import time 
 from dataclasses import dataclass
 
 from src.Util.web_rag import WebRetriever  # local import
@@ -92,7 +93,14 @@ class FactVerificationAgent:
         ddg_region: str = "us-en",
         ddg_safesearch: str = "moderate",
         ddg_timelimit: str | None = None,  # e.g., "m" (last month)
+        rag_enabled: bool = True, 
+        rag_max_results: int = 6,
+        rag_time_budget_sec: float = 10.0,
     ):
+        self.rag_enabled = rag_enabled
+        self.rag_max_results = rag_max_results
+        self.rag_time_budget_sec = rag_time_budget_sec
+        
         self.config = AgentConfig(
             base_model=model,
             top_k_extract=max(1, int(top_k_extract)),
@@ -314,10 +322,22 @@ class FactVerificationAgent:
         base = self._verification_frame()
         guide = f"\n\nUse this verification strategy as guidance:\n{strat_prompt}" if strat_prompt else ""
 
-        # Retrieve web context for RAG verification
-        query = self._rewrite_query(claim_text)
-        hits = self.web_retriever.search(query, max_results=6)
-        hits = self.web_retriever.rerank(query, hits)
+        hits = []
+        if self.rag_enabled:
+            start = time.time()
+            query = self._rewrite_query(claim_text)
+
+            # short-circuit if we’re already over budget (e.g., previous delays)
+            if time.time() - start < self.rag_time_budget_sec:
+                hits = self.web_retriever.search(query, max_results=self.rag_max_results)
+                # optional: if this first call took too long, skip rerank
+                if hits and (time.time() - start) < self.rag_time_budget_sec * 0.8:
+                    hits = self.web_retriever.rerank(query, hits)
+
+            # hard stop if budget exceeded
+            if time.time() - start >= self.rag_time_budget_sec:
+                hits = hits[:3]  # keep whatever we have (or clear to [])
+
         context_block = f"\n\nWeb snippets (attributed):\n{self._format_context(hits)}" if hits else ""
 
         prompt = f"""{base}{guide}{context_block}
