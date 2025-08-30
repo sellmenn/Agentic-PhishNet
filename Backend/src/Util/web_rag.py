@@ -1,12 +1,12 @@
-import sys
-from functools import lru_cache
-from urllib.parse import urlparse
+import sys # to print err msgs to the terminal  
+from functools import lru_cache # caching search results so the same query doesn’t hit DuckDuckGo again
+from urllib.parse import urlparse # extracts domain from link 
 from ddgs import DDGS
 
 
 def get_domain(url: str) -> str:
     try:
-        return urlparse(url).netloc.lower()
+        return urlparse(url).netloc.lower() # extracts domain in lowercase, avoid dedupes later
     except Exception:
         return url
 
@@ -19,13 +19,13 @@ class WebRetriever:
     def __init__(
         self,
         region: str = "us-en",
-        safesearch: str = "moderate",  # off | moderate | strict
-        timelimit: str | None = None,  # d | w | m | y
-        max_per_domain: int = 1,
-        max_snippet_len: int = 320,
-        stderr_logging: bool = True,
+        safesearch: str = "moderate",  # off | moderate | strict, filters for adult content
+        timelimit: str | None = None,  # d | w | m | y, restrict to recent results
+        max_per_domain: int = 1, # only allow one result per website to avoid spam 
+        max_snippet_len: int = 320, # restrict snippet length 
+        stderr_logging: bool = True, # whether to print errors 
     ):
-        self.region = region
+        self.region = region 
         self.safesearch = safesearch
         self.timelimit = timelimit
         self.max_per_domain = max_per_domain
@@ -34,12 +34,15 @@ class WebRetriever:
 
     def _log(self, msg: str) -> None:
         if self.stderr_logging:
-            print(f"[WebRetriever] {msg}", file=sys.stderr)
+            print(f"[WebRetriever] {msg}", file=sys.stderr) # error logging format in terminal
 
+    # main search method: 
     @lru_cache(maxsize=512)
     def search(self, query: str, max_results: int = 6) -> list[dict]:
         """
-        Return [{"title","url","snippet","domain"}] (domain-deduped, snippet-truncated).
+        Takes a query string and returns a 
+        list of dict with keys {"title","url","snippet","domain"},
+        default of 6 results 
         """
         hits: list[dict] = []
         try:
