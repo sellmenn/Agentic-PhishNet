@@ -31,8 +31,7 @@ class LangModel(Model):
             ]
         }
         """
-        e = self.llm_wrapper.analyse_email(email.content) # self.llm_wrapper outputs evaluation e : json
-        #e["confidence_score"] = 1 - e["confidence_score"] # oops we trained our model the wrong way arnd T.T
+        e = self.llm_wrapper.analyse_email(email.content)
         e_obj = Evaluation(
             confidence=e["confidence_score"],
             summary=e["summary"],

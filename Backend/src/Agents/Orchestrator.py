@@ -63,7 +63,7 @@ class Orchestrator:
             idx = result["index"]
             final_confidence_score += result["confidence"] * self.weights[idx]
             summary += f"\n{result['agent_type']} : {result['summary']}\n"
-            # highlight.extend(result["highlight"])
+            
             if result['agent_type'] not in ['Subject Analysis Agent', 'Subject Analysis Agent']:
                 highlight.extend([result["highlight"]])
             usage = result["token_usage"]

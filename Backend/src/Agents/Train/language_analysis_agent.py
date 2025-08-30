@@ -16,11 +16,11 @@ class OpenAIChat:
         self._use_new = False
         self._client = None
         try:
-            from openai import OpenAI  # type: ignore
+            from openai import OpenAI 
             self._client = OpenAI()
             self._use_new = True
         except Exception:
-            import openai as _openai  # type: ignore
+            import openai as _openai  
             if not os.getenv("OPENAI_API_KEY"):
                 raise RuntimeError("OPENAI_API_KEY not set.")
             self._openai = _openai

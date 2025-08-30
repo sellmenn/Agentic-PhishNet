@@ -1,33 +1,3 @@
-"""
-Fact Verification Agent (Inference) — Closed-Book, Training-Aligned
-
-CLI:
-  --input_file <path>      Read email text from file
-  --input_string "<text>"  Or pass email text directly
-  --output_file <path>     Where to write the JSON (default: fact_verification_output.json)
-  --model <model_name>     OpenAI model (default: gpt-4o-mini)
-  --api_key <key>          Optional; otherwise uses OPENAI_API_KEY env var
-  --trained_path <path>    Path to final training checkpoint JSON
-  --top_k_extract <int>    How many top extraction strategies to use (default: 2)
-  --top_k_verify  <int>    How many top verification strategies to use (default: 3)
-
-Output JSON:
-{
-  "confidence_score": float,              # 0..1
-  "summary": "Brief summary",
-  "token_usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int},
-  "highlight": [
-    {"s_idx": int, "e_idx": int, "reasoning": "why suspicious"},
-    ...
-  ]
-}
-
-Internals:
-- Extract claims (one call), then verify each claim (one call per claim), closed-book.
-- Uses prompts from a trained checkpoint (top-K extraction + rotating verification strategies).
-- Aggregates per-claim results into confidence_score and highlights.
-"""
-
 import argparse
 import json
 import os
@@ -36,7 +6,7 @@ import sys
 import time 
 from dataclasses import dataclass
 
-from src.Util.web_rag import WebRetriever  # local import
+from src.Util.web_rag import WebRetriever
 
 import openai
 
@@ -50,7 +20,7 @@ class AgentConfig:
     temperature_verify: float = 0.15
     max_tokens_extract: int = 900
     max_tokens_verify: int = 400
-    max_claims_per_email: int = 12  # safety cap
+    max_claims_per_email: int = 12
     top_k_extract: int = 2
     top_k_verify: int = 3
 
@@ -92,7 +62,7 @@ class FactVerificationAgent:
         top_k_verify: int = 3,
         ddg_region: str = "us-en",
         ddg_safesearch: str = "moderate",
-        ddg_timelimit: str | None = None,  # e.g., "m" (last month)
+        ddg_timelimit: str | None = None,
         rag_enabled: bool = True, 
         rag_max_results: int = 6,
         rag_time_budget_sec: float = 10.0,
@@ -109,8 +79,8 @@ class FactVerificationAgent:
         self.client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
 
         # Trained strategy holders
-        self.extract_strategies: list[dict] = []   # [{"prompt", "success_rate", ...}, ...]
-        self.verify_strategies: list[dict] = []    # [{"prompt", "success_rate", ...}, ...]
+        self.extract_strategies: list[dict] = [] 
+        self.verify_strategies: list[dict] = []    
 
         # Web retriever for RAG verification
         self.web_retriever = WebRetriever(
@@ -327,16 +297,15 @@ class FactVerificationAgent:
             start = time.time()
             query = self._rewrite_query(claim_text)
 
-            # short-circuit if we’re already over budget (e.g., previous delays)
             if time.time() - start < self.rag_time_budget_sec:
                 hits = self.web_retriever.search(query, max_results=self.rag_max_results)
-                # optional: if this first call took too long, skip rerank
+    
                 if hits and (time.time() - start) < self.rag_time_budget_sec * 0.8:
                     hits = self.web_retriever.rerank(query, hits)
 
-            # hard stop if budget exceeded
+        
             if time.time() - start >= self.rag_time_budget_sec:
-                hits = hits[:3]  # keep whatever we have (or clear to [])
+                hits = hits[:3]
 
         context_block = f"\n\nWeb snippets (attributed):\n{self._format_context(hits)}" if hits else ""
 
@@ -401,10 +370,10 @@ CLAIM:
         """
         Extract claims, verify each, then aggregate.
         """
-        # 1) Extract claims
+        
         claims, usage_total = self._extract_claims(email_content)
 
-        # 2) Verify per-claim
+        
         verifs: list[dict] = []
         for i, c in enumerate(claims):
             ct = c.get("claim_text", "").strip()
@@ -421,12 +390,12 @@ CLAIM:
             v, u = self._verify_one_claim(ct, guide)
             v["claim_index"] = i
             verifs.append(v)
-            # accumulate usage
+            
             usage_total["prompt_tokens"] += u["prompt_tokens"]
             usage_total["completion_tokens"] += u["completion_tokens"]
             usage_total["total_tokens"] += u["total_tokens"]
 
-        # 3) Aggregate to overall confidence_score
+        
         if verifs:
             weighted_sum = 0.0
             weight = 0.0
@@ -439,7 +408,7 @@ CLAIM:
         else:
             overall_conf = 0.5
 
-        # 4) Highlights for suspicious spans
+    
         highlights: list[dict] = []
         for i, (c, v) in enumerate(zip(claims, verifs)):
             if v["is_legitimate"] == 0:

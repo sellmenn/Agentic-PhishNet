@@ -31,7 +31,7 @@ class FactModel(Model):
             ]
         }
         """
-        e = self.llm_wrapper.analyse_email(email.content) # self.llm_wrapper outputs evaluation e : json
+        e = self.llm_wrapper.analyse_email(email.content) 
         e_obj = Evaluation(
             confidence=e["confidence_score"], 
             summary=e["summary"],

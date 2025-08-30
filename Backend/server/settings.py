@@ -17,17 +17,17 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware", 
     "django.middleware.common.CommonMiddleware",
-    "app.middlewares.PhishNetMiddleware",  # our demo middleware
+    "app.middlewares.PhishNetMiddleware",  
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True          # dev only
-CORS_ALLOW_CREDENTIALS = True          # if you plan to send cookies
+CORS_ALLOW_ALL_ORIGINS = True          
+CORS_ALLOW_CREDENTIALS = True          
 CORS_ALLOW_HEADERS = ["*"]
 CORS_ALLOW_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
 
 ROOT_URLCONF = "server.urls"
 
-# No templates, DB, auth, sessions, CSRF — as requested
+
 TEMPLATES = []
 DATABASES = {}
 AUTH_PASSWORD_VALIDATORS = []
