@@ -2,7 +2,8 @@ import React from 'react';
 
 export default function TooltipCard({ items = [], className = '' }) {
   return (
-    <div className={"pointer-events-none absolute -top-2 left-0 -translate-y-full z-50 " + className}>\
+    <div className={"pointer-events-none absolute -top-2 left-0 -translate-y-full z-50 " + className}>
+      <div className="opacity-0">\</div>
       <div className="rounded-xl border border-line bg-[rgba(6,18,30,.95)] shadow-glow p-3 min-w-[260px] max-w-[380px]">
         <div className="text-xs font-semibold text-ink mb-1">Signals</div>
         <ul className="space-y-1 text-xs text-ink leading-relaxed">
