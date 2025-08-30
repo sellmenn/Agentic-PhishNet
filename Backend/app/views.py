@@ -2,6 +2,7 @@
 from django.http import JsonResponse
 from src.Util.Email import Email
 import json
+import uuid
 
 def processEmail(request):
     # Echo something the middleware attached (if present)
@@ -29,12 +30,10 @@ def processEmail(request):
     print("incoming: ",emails)
     emailResults = []
 
-    count = 0
     for e_json in emails:
-        count += 1
         print(e_json)
         email = Email()
-        email.ident = count
+        email.ident = uuid.uuid4().hex
         email.content = e_json["body"]
         email.sender = e_json["sender"]
         email.subject = e_json["subject"]
