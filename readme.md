@@ -46,10 +46,7 @@ Agentic-PhishNet relies on the OpenAI API for its LLM agents. You must configure
 OPENAI_API_KEY="your_api_key_here"
 ```
 
-Replace `
-
-
-your_api_key_here` with your actual OpenAI API key.
+Replace `your_api_key_here` with your actual OpenAI API key.
 
 **Run the Backend Server:**
 
