@@ -1,4 +1,4 @@
-from src.Agents.Train.language_analysis_agent import LanguageAnalysisAgent
+from Agents.Train.language_analysis_agent import LanguageAnalysisAgent
 
 from dotenv import load_dotenv
 import os

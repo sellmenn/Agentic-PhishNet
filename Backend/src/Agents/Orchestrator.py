@@ -1,7 +1,7 @@
 from .Model import Model
-from src.Util.Email import Email
-from src.Util.Evaluation import Evaluation
-from src.Util.handlers import *
+from Util.Email import Email
+from Util.Evaluation import Evaluation
+from Util.handlers import *
 from concurrent.futures import ThreadPoolExecutor
 
 class Orchestrator:

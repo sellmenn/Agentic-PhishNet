@@ -1,7 +1,7 @@
 from .Model import Model
-from src.LLM.LangWrapper import LanAnalysisWrapper
-from src.Util.Email import Email
-from src.Util.Evaluation import Evaluation
+from LLM.LangWrapper import LanAnalysisWrapper
+from Util.Email import Email
+from Util.Evaluation import Evaluation
 
 class LangModel(Model):
     def __init__(self):

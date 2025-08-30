@@ -1,7 +1,7 @@
 from .Model import Model
-from src.LLM.FactWrapper import FactAnalysisWrapper
-from src.Util.Email import Email
-from src.Util.Evaluation import Evaluation
+from LLM.FactWrapper import FactAnalysisWrapper
+from Util.Email import Email
+from Util.Evaluation import Evaluation
 
 class FactModel(Model):
     def __init__(self):

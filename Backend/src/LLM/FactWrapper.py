@@ -1,4 +1,4 @@
-from src.Agents.Train.fact_verification_agent import FactVerificationAgent
+from Agents.Train.fact_verification_agent import FactVerificationAgent
 
 from dotenv import load_dotenv
 import os

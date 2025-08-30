@@ -35,7 +35,7 @@ import re
 import sys
 from dataclasses import dataclass
 
-from src.Util.web_rag import WebRetriever  # local import
+from Util.web_rag import WebRetriever 
 
 import openai
 

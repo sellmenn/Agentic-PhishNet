@@ -1,5 +1,5 @@
-from src.Util.Email import Email
-from src.Util.Evaluation import Evaluation
+from Util.Email import Email
+from Util.Evaluation import Evaluation
 import json 
 
 class Model:
