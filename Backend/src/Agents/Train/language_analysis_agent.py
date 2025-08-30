@@ -1,370 +1,331 @@
-"""
-Language Analysis Agent for Phishing Detection
-- Prints results to console
-- Saves strict JSON output to a file
-- Accepts a text file or raw string as input via CLI
-- ✅ Uses trained strategies from a final training checkpoint (committee inference)
-"""
-
-import json
-import re
-import os
-import argparse
-from typing import Dict, List, Optional, Tuple
+import os, re, sys, json
 from datetime import datetime
+from typing import List, Dict, Optional, Tuple
 
-import openai
+OPENAI_MODEL     = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+TRAINED_PATH     = "models/language_agent/final_training_results.json"
+COMMITTEE_SIZE   = 3
+TOP_K_STRATEGIES = 3
+TEMPERATURE      = 0.1
+MAX_TOKENS       = 1000
+OUTPUT_JSON      = ""
 
+class OpenAIChat:
+    def __init__(self, model: str):
+        self.model = model
+        self._use_new = False
+        self._client = None
+        try:
+            from openai import OpenAI  # type: ignore
+            self._client = OpenAI()
+            self._use_new = True
+        except Exception:
+            import openai as _openai  # type: ignore
+            if not os.getenv("OPENAI_API_KEY"):
+                raise RuntimeError("OPENAI_API_KEY not set.")
+            self._openai = _openai
 
-# ---------------------------- Agent ----------------------------
+    def chat(self, messages: List[Dict], temperature: float, max_tokens: int) -> Tuple[str, Dict]:
+        if self._use_new:
+            resp = self._client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = resp.choices[0].message.content or ""
+            usage = getattr(resp, "usage", None) or {}
+            return content.strip(), {
+                "prompt_tokens": int(getattr(usage, "prompt_tokens", 0) or 0),
+                "completion_tokens": int(getattr(usage, "completion_tokens", 0) or 0),
+                "total_tokens": int(getattr(usage, "total_tokens", 0) or 0),
+            }
+        else:
+            resp = self._openai.ChatCompletion.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            content = resp["choices"][0]["message"]["content"] or ""
+            usage = resp.get("usage", {}) if isinstance(resp, dict) else {}
+            return content.strip(), {
+                "prompt_tokens": int(usage.get("prompt_tokens", 0) or 0),
+                "completion_tokens": int(usage.get("completion_tokens", 0) or 0),
+                "total_tokens": int(usage.get("total_tokens", 0) or 0),
+            }
 
 class LanguageAnalysisAgent:
-    """
-    Standalone Language Analysis Agent for phishing detection.
-
-    Returns:
-      {
-        "confidence_score": float (1.0 = NOT phishing, 0.0 = phishing),
-        "summary": str,
-        "token_usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int},
-        "highlight": [{"s_idx": int, "e_idx": int, "reasoning": str}, ...]
-      }
-    """
-
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        model: str = "gpt-4o-mini",
-        trained_path: Optional[str] = None,
-        committee_size: int = 3,
-        top_k_strategies: int = 3
+        trained_path: Optional[str] = TRAINED_PATH,
+        committee_size: int = COMMITTEE_SIZE,
+        top_k_strategies: int = TOP_K_STRATEGIES,
+        temperature: float = TEMPERATURE,
+        max_tokens: int = MAX_TOKENS,
+        model: str = OPENAI_MODEL,
     ):
-        self.client = openai.OpenAI(api_key=api_key or os.getenv("OPENAI_API_KEY"))
-        self.model = model
-
-        # Defaults (used if no checkpoint provided)
-        self.analysis_prompt = self._default_system_prompt()
-        self.defender_strategies: List[Dict] = []
-
-        # Committee settings
+        self.llm = OpenAIChat(model)
+        self.temperature = float(temperature)
+        self.max_tokens = int(max_tokens)
         self.committee_size = max(1, int(committee_size))
         self.top_k_strategies = max(1, int(top_k_strategies))
+        self.system_prompt = self._system_prompt()
+        self.strategies = self._load_trained_strategies(trained_path)
 
-        # Load trained strategies (if provided)
-        trained_path = os.getenv("LANG_TRAINED_CHECKPOINT_PATH")
-        self._load_trained_strategies(trained_path)
+    def _system_prompt(self) -> str:
+        return (
+            "You are a language analysis agent that classifies emails for phishing using reasoning-only, no external tools. "
+            "Output JSON ONLY with this schema:\n"
+            '{\n  "confidence_score": float,  // 0.0 = phishing, 1.0 = not phishing\n'
+            '  "summary": "string",\n'
+            '  "token_usage": {"prompt_tokens": int, "completion_tokens": int, "total_tokens": int},\n'
+            '  "highlight": [{"s_idx": int, "e_idx": int, "reasoning": "string"}]\n}\n'
+            "Give correct character indices from the original email text. No extra keys or text."
+        )
 
-    # ---------- Trained Strategy Loading ----------
-
-    def _load_trained_strategies(self, path: str) -> None:
-        """
-        Load evolved strategies from a final training result JSON.
-        Supports:
-          - Language agent:   {"defender_strategies":[{name, description, prompt, success_rate,...}, ...]}
-          - Fact agent:       {"verification_strategies":[{...}], "claim_extraction_strategies":[...]}
-        We will use defender_strategies if present, else verification_strategies.
-        """
+    def _load_trained_strategies(self, path: Optional[str]) -> List[str]:
+        if not path or not os.path.exists(path):
+            return [self._default_strategy()]
         try:
-            if not os.path.exists(path):
-                # Nothing to load; will run with the default prompt
-                return
             with open(path, "r", encoding="utf-8") as f:
                 ckpt = json.load(f)
-
-            # Prefer language-agent defender_strategies
-            strategies = ckpt.get("defender_strategies", None)
-
-            # Fallback: fact-agent verification_strategies (still useful guidance)
-            if not strategies:
-                strategies = ckpt.get("verification_strategies", None)
-
-            if not strategies or not isinstance(strategies, list):
-                return
-
-            # Keep only items with a prompt
-            cleaned = []
-            for s in strategies:
-                pr = (s or {}).get("prompt", "")
-                if not isinstance(pr, str) or not pr.strip():
-                    continue
-                cleaned.append({
-                    "name": s.get("name", "strategy"),
-                    "description": s.get("description", ""),
-                    "prompt": self._sanitize_strategy_prompt(pr),
-                    "success_rate": float((s.get("success_rate", 0.5) or 0.5))
-                })
-
-            if cleaned:
-                # Sort by success_rate desc and store
-                cleaned.sort(key=lambda x: x["success_rate"], reverse=True)
-                self.defender_strategies = cleaned
-
         except Exception:
-            # Silently ignore loading errors and fall back to default prompt
-            self.defender_strategies = []
+            return [self._default_strategy()]
+        candidates = []
+        for key in ["defender_strategies", "defender_prompts", "verification_strategies"]:
+            v = ckpt.get(key)
+            if isinstance(v, list) and v:
+                candidates = v
+                break
+        prompts: List[Tuple[str, float]] = []
+        for s in candidates:
+            p = (s or {}).get("prompt") or (s or {}).get("instruction") or ""
+            if not isinstance(p, str) or not p.strip():
+                continue
+            sr = s.get("success_rate", 0.5)
+            try:
+                prompts.append((self._strip_md_fences(p.strip()), float(sr)))
+            except Exception:
+                prompts.append((self._strip_md_fences(p.strip()), 0.5))
+        if not prompts:
+            p = ckpt.get("defender_prompt_prefix") or ckpt.get("defender_prompt") or ""
+            if isinstance(p, str) and p.strip():
+                return [self._strip_md_fences(p.strip())]
+            return [self._default_strategy()]
+        prompts.sort(key=lambda x: x[1], reverse=True)
+        return [p for p, _ in prompts[: self.top_k_strategies]]
 
-    def _sanitize_strategy_prompt(self, text: str) -> str:
-        """
-        Remove Markdown code fences and keep the content; some evolved prompts may contain
-        ```json ...``` or ``` ... ``` blocks.
-        """
-        # Strip triple backtick fences
+    def _strip_md_fences(self, text: str) -> str:
         text = re.sub(r"```[a-zA-Z]*\s*", "", text)
-        text = text.replace("```", "")
-        return text.strip()
+        return text.replace("```", "").strip()
 
-    def _default_system_prompt(self) -> str:
+    def _default_strategy(self) -> str:
         return (
-            "You are an expert language analysis agent specialized in detecting phishing emails through linguistic "
-            "patterns.\n\nFocus on:\n"
-            "1) Urgency/time pressure\n2) Authority impersonation\n3) Threat language\n4) Emotional manipulation\n"
-            "5) Social engineering requests\n6) Grammar/spelling anomalies\n7) Generic greetings\n8) Reward promises\n\n"
-            "Output JSON ONLY in the user's requested schema and include exact character indices for suspicious phrases."
+            "Analyze strictly for phishing cues via reasoning. Make a binary call but report confidence on [0,1]. "
+            "Be explicit in why specific spans are suspicious and provide exact indices for each span."
         )
-
-    # ---------- Public API ----------
 
     def analyze_email(self, email_content: str) -> Dict:
-        """
-        Analyze an email for phishing indicators using an ensemble (committee) of trained strategies
-        if available; otherwise, use a single default prompt. Returns strict JSON.
-        """
-        try:
-            # Build committee strategies: top-K trained prompts if present; else the default
-            strategies = self._select_committee_strategies()
+        if not email_content or not email_content.strip():
+            return self._out(0.5, "Empty input.", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}, [])
+        prompts = self.strategies or [self._default_strategy()]
+        k = min(self.committee_size, max(1, len(prompts)))
+        results: List[Dict] = []
+        usage_tot = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+        for i in range(k):
+            strat = prompts[i % len(prompts)]
+            one, u = self._run(email_content, strat)
+            results.append(one)
+            for t in usage_tot:
+                usage_tot[t] += int(u.get(t, 0))
+        return self._aggregate(email_content, results, usage_tot)
 
-            # Aggregate from multiple model calls
-            all_results: List[Dict] = []
-            total_usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-
-            # We will run up to committee_size calls, cycling over our selected strategy prompts
-            for i in range(self.committee_size):
-                strat_prompt = strategies[i % len(strategies)]
-                result_i, usage_i = self._run_single_analysis(email_content, strat_prompt)
-                all_results.append(result_i)
-                # Accumulate token usage
-                for k in ("prompt_tokens", "completion_tokens", "total_tokens"):
-                    total_usage[k] += usage_i.get(k, 0)
-
-            # Aggregate committee outputs
-            final = self._aggregate_committee(email_content, all_results, total_usage)
-            return final
-
-        except Exception as e:
-            # Always return valid schema on error
-            return {
-                "confidence_score": 0.5,
-                "summary": f"Error in language analysis: {str(e)}",
-                "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
-                "highlight": [],
-            }
-
-    # ---------- Single-call runner ----------
-
-    def _run_single_analysis(self, email_content: str, strategy_prompt: Optional[str]) -> Tuple[Dict, Dict]:
-        """
-        Execute a single LLM analysis call using a strategy prompt (if provided).
-        Returns (parsed_output_in_internal_schema, token_usage_dict).
-        """
-        analysis_request = f"""Analyze the following email content for phishing indicators:
-
-EMAIL CONTENT:
-{email_content}
-
-Provide your analysis in the following JSON format:
-{{
-    "confidence_score": 0.5,
-    "summary": "Brief summary of findings",
-    "suspicious_phrases": [
-        {{
-            "text": "exact phrase from email",
-            "start_index": 0,
-            "end_index": 10,
-            "reasoning": "why this phrase is suspicious"
-        }}
-    ],
-    "overall_assessment": "detailed assessment of the email"
-}}
-
-IMPORTANT:
-- confidence_score: 0.0 (definitely phishing) to 1.0 (definitely legitimate)
-- start_index and end_index are exact character positions (inclusive start, exclusive end)
-- Include ALL suspicious phrases with indices that match the original text exactly
-- Output ONLY JSON
-"""
-
-        # Compose messages: keep a stable system prompt, add trained strategy as guidance
-        sys_prompt = self.analysis_prompt
+    def _run(self, email_text: str, strategy: Optional[str]) -> Tuple[Dict, Dict]:
         user_prompt = (
-            (f"Use this detection strategy as guidance:\n{strategy_prompt}\n\n" if strategy_prompt else "")
-            + analysis_request
+            (f"Strategy:\n{strategy}\n\n" if strategy else "")
+            + "Email to analyze:\n---\n"
+            + email_text
+            + "\n---\n"
+            "Return JSON ONLY with keys: confidence_score, summary, token_usage, highlight.\n"
+            "Rules:\n"
+            "- confidence_score in [0,1], where 0=phishing, 1=not phishing.\n"
+            "- highlight is a list of objects: {\"s_idx\":int,\"e_idx\":int,\"reasoning\":string} with character indices.\n"
+            "- No extra commentary outside JSON."
         )
-
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=1000,
-            temperature=0.1,
+        txt, usage = self.llm.chat(
+            messages=[{"role": "system", "content": self.system_prompt},
+                      {"role": "user", "content": user_prompt}],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
         )
-
-        # Extract token usage (safe fallback if fields missing)
-        usage = getattr(response, "usage", None)
-        token_usage = {
-            "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
-            "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
-            "total_tokens": getattr(usage, "total_tokens", 0) or 0,
-        }
-
-        analysis_text = response.choices[0].message.content.strip()
-
-        # Try to parse JSON block
-        parsed = self._safe_extract_json(analysis_text)
+        parsed = self._extract_json(txt)
         if parsed is None:
-            parsed = self._fallback_parse(analysis_text, email_content)
+            parsed = {"confidence_score": 0.5, "summary": "Unparseable model output.", "highlight": []}
+        return self._normalize(parsed, usage, email_text), usage
 
-        # Convert to strict output schema (internal)
-        result = self._format_output(parsed, token_usage, email_content)
-        return result, token_usage
-
-    # ---------- Committee helpers ----------
-
-    def _select_committee_strategies(self) -> List[Optional[str]]:
-        """
-        Return a list of strategy prompts to use for committee inference.
-        If we have trained strategies, choose top-K by success_rate; else return [None] to use default only.
-        """
-        if self.defender_strategies:
-            top = self.defender_strategies[: self.top_k_strategies]
-            return [s["prompt"] for s in top if s.get("prompt")]
-        # No trained strategies; run with default system prompt only
-        return [None]
-
-    def _aggregate_committee(self, email_content: str, results: List[Dict], total_usage: Dict) -> Dict:
-        """
-        Combine multiple single-call outputs:
-          - confidence_score: mean
-          - summary: take the most detailed (longest) summary
-          - highlight: merge and de-duplicate spans
-          - token_usage: sum over committee
-        """
-        if not results:
-            return {
-                "confidence_score": 0.5,
-                "summary": "No results from ensemble.",
-                "token_usage": total_usage,
-                "highlight": [],
-            }
-
-        # Average confidence
-        confs = [float(r.get("confidence_score", 0.5)) for r in results]
-        final_conf = sum(confs) / max(1, len(confs))
-
-        # Pick longest summary (usually most informative)
-        summaries = [(r.get("summary") or "") for r in results]
-        final_summary = max(summaries, key=lambda s: len(s)) if any(summaries) else "Analysis completed."
-
-        # Merge highlights (dedupe by (s_idx, e_idx, reasoning))
-        merged = []
-        seen = set()
-        for r in results:
-            for h in r.get("highlight", []) or []:
-                key = (int(h.get("s_idx", -1)), int(h.get("e_idx", -1)), str(h.get("reasoning", "")))
-                if key in seen:
-                    continue
-                seen.add(key)
-                merged.append({
-                    "s_idx": key[0],
-                    "e_idx": key[1],
-                    "reasoning": key[2]
-                })
-
-        return {
-            "confidence_score": float(final_conf),
-            "summary": str(final_summary),
-            "token_usage": total_usage,
-            "highlight": merged,
-        }
-
-    # ---------- Parsing & Formatting ----------
-
-    def _safe_extract_json(self, text: str) -> Optional[Dict]:
-        s = text.find("{")
-        e = text.rfind("}") + 1
+    def _extract_json(self, text: str) -> Optional[Dict]:
+        s, e = text.find("{"), text.rfind("}") + 1
         if s != -1 and e > s:
             try:
                 return json.loads(text[s:e])
-            except json.JSONDecodeError:
+            except Exception:
                 return None
         return None
 
-    def _fallback_parse(self, analysis_text: str, email_content: str) -> Dict:
-        """Very loose parsing when model didn't return clean JSON."""
-        confidence_match = re.search(
-            r'confidence[_\s]*score["\s]*:?\s*([0-9.]+)',
-            analysis_text,
-            re.IGNORECASE,
-        )
-        confidence_score = float(confidence_match.group(1)) if confidence_match else 0.5
+    def _is_word_char(self, ch: str) -> bool:
+        return ch.isalnum() or ch in "_-/'"
 
-        summary_match = re.search(
-            r'summary["\s]*:?\s*["\']([^"\']+)["\']',
-            analysis_text,
-            re.IGNORECASE,
-        )
-        summary = summary_match.group(1) if summary_match else "Analysis completed (fallback parser)."
+    def _expand_to_word_bounds(self, text: str, s: int, e: int) -> Tuple[int, int]:
+        n = len(text)
+        s = max(0, min(s, n))
+        e = max(0, min(e, n))
+        if s >= e: return s, e
+        while s > 0 and self._is_word_char(text[s-1]) and self._is_word_char(text[s]):
+            s -= 1
+        while e < n and e > 0 and self._is_word_char(text[e-1]) and (e < n and self._is_word_char(text[e])):
+            e += 1
+        while s < e and text[s].isspace(): s += 1
+        while e > s and text[e-1].isspace(): e -= 1
+        return s, e
 
-        return {
-            "confidence_score": confidence_score,
-            "summary": summary,
-            "suspicious_phrases": [],
-            "overall_assessment": (analysis_text[:200] + "...") if len(analysis_text) > 200 else analysis_text,
-        }
+    def _valid_span(self, text: str, s: int, e: int) -> bool:
+        if e - s < 2:
+            return False
+        fragment = text[s:e]
+        if not re.search(r"[A-Za-z0-9]", fragment):
+            return False
+        if re.fullmatch(r"\W+", fragment or ""):
+            return False
+        return True
 
-    def _format_output(self, parsed: Dict, token_usage: Dict, email_content: str) -> Dict:
-        confidence_score = float(parsed.get("confidence_score", 0.5))
-        summary = parsed.get("summary") or parsed.get("overall_assessment") or "Language analysis completed."
+    def _merge_overlaps(self, spans: List[Tuple[int, int, str]]) -> List[Tuple[int, int, str]]:
+        if not spans: return []
+        spans.sort(key=lambda x: (x[0], x[1]))
+        merged: List[Tuple[int, int, str]] = []
+        cur_s, cur_e, cur_r = spans[0]
+        for s, e, r in spans[1:]:
+            if s <= cur_e + 1:
+                cur_e = max(cur_e, e)
+                if len(r) > len(cur_r):
+                    cur_r = r
+            else:
+                merged.append((cur_s, cur_e, cur_r))
+                cur_s, cur_e, cur_r = s, e, r
+        merged.append((cur_s, cur_e, cur_r))
+        return merged
 
-        highlights: List[Dict] = []
-        suspicious_phrases = parsed.get("suspicious_phrases", []) or []
-
-        for phrase in suspicious_phrases:
-            if not isinstance(phrase, dict):
+    def _clean_highlights(self, email_text: str, raw: List[Dict]) -> List[Dict]:
+        n = len(email_text)
+        spans: List[Tuple[int, int, str]] = []
+        for h in raw:
+            try:
+                s = int(h.get("s_idx", 0) or 0)
+                e = int(h.get("e_idx", 0) or 0)
+                reason = str(h.get("reasoning") or "Suspicious span")
+            except Exception:
                 continue
+            s, e = max(0, min(s, n)), max(0, min(e, n))
+            if s >= e: continue
+            s, e = self._expand_to_word_bounds(email_text, s, e)
+            if s >= e: continue
+            if not self._valid_span(email_text, s, e): continue
+            spans.append((s, e, reason))
+        dedup: Dict[Tuple[int, int], str] = {}
+        for s, e, r in spans:
+            key = (s, e)
+            if key not in dedup or len(r) > len(dedup[key]):
+                dedup[key] = r
+        spans = [(s, e, dedup[(s, e)]) for (s, e) in dedup]
+        spans = self._merge_overlaps(spans)
+        spans = spans[:20]
+        return [{"s_idx": s, "e_idx": e, "reasoning": r} for s, e, r in spans]
 
-            start_idx = int(phrase.get("start_index", 0) or 0)
-            end_idx = int(phrase.get("end_index", 0) or 0)
+    def _normalize(self, obj: Dict, usage: Dict, email_text: str) -> Dict:
+        cs = float(obj.get("confidence_score", 0.5))
+        cs = 0.0 if cs < 0 else 1.0 if cs > 1 else cs
+        summary = str(obj.get("summary") or "Analysis complete.")
+        hl_in = obj.get("highlight", []) or []
+        prelim = []
+        for h in hl_in:
+            if not isinstance(h, dict): continue
+            try:
+                s_idx = int(h.get("s_idx", 0) or 0)
+                e_idx = int(h.get("e_idx", 0) or 0)
+            except Exception:
+                continue
+            s_idx = max(0, min(s_idx, len(email_text)))
+            e_idx = max(0, min(e_idx, len(email_text)))
+            if s_idx >= e_idx: continue
+            reason = str(h.get("reasoning") or "Suspicious span")
+            prelim.append({"s_idx": s_idx, "e_idx": e_idx, "reasoning": reason})
+        hl_out = self._clean_highlights(email_text, prelim)
+        return self._out(cs, summary, usage, hl_out)
 
-            # Clamp to bounds
-            start_idx = max(0, min(start_idx, len(email_content)))
-            end_idx = max(0, min(end_idx, len(email_content)))
+    def _aggregate(self, email_text: str, results: List[Dict], usage_tot: Dict) -> Dict:
+        if not results:
+            return self._out(0.5, "No committee outputs.", usage_tot, [])
+        confs = [float(r.get("confidence_score", 0.5)) for r in results]
+        final_conf = sum(confs) / max(1, len(confs))
+        summaries = [(r.get("summary") or "") for r in results]
+        final_summary = max(summaries, key=lambda s: len(s)) if any(summaries) else "Analysis complete."
+        merged, seen = [], set()
+        for r in results:
+            for h in r.get("highlight", []) or []:
+                s, e, rr = int(h.get("s_idx", -1)), int(h.get("e_idx", -1)), str(h.get("reasoning", ""))
+                key = (s, e, rr)
+                if key in seen: continue
+                seen.add(key); merged.append({"s_idx": s, "e_idx": e, "reasoning": rr})
+        merged = self._clean_highlights(email_text, merged)
+        return self._out(float(final_conf), final_summary, usage_tot, merged)
 
-            if start_idx >= end_idx:
-                # Try to locate by text
-                txt = phrase.get("text", "")
-                if txt:
-                    found = email_content.find(txt)
-                    if found != -1:
-                        start_idx = found
-                        end_idx = found + len(txt)
-                    else:
-                        continue  # skip if we can't resolve
-                else:
-                    continue
-
-            highlights.append(
-                {
-                    "s_idx": start_idx,
-                    "e_idx": end_idx,
-                    "reasoning": phrase.get("reasoning", "Suspicious language pattern detected"),
-                }
-            )
-
+    def _out(self, confidence_score: float, summary: str, usage: Dict, highlight: List[Dict]) -> Dict:
         return {
             "confidence_score": float(confidence_score),
             "summary": str(summary),
-            "token_usage": token_usage,
-            "highlight": highlights,
+            "token_usage": {
+                "prompt_tokens": int(usage.get("prompt_tokens", 0) or 0),
+                "completion_tokens": int(usage.get("completion_tokens", 0) or 0),
+                "total_tokens": int(usage.get("total_tokens", 0) or 0),
+            },
+            "highlight": highlight,
         }
+
+def _read_text() -> str:
+    if os.path.exists("email.txt"):
+        with open("email.txt", "r", encoding="utf-8") as f:
+            return f.read()
+    env_text = os.environ.get("EMAIL_TEXT", None)
+    if env_text is not None and str(env_text).strip():
+        return env_text
+    if not sys.stdin.isatty():
+        return sys.stdin.read()
+    raise ValueError("No email text provided. Put text in ./email.txt, set EMAIL_TEXT env, or pipe to stdin.")
+
+def _write_json(obj: Dict) -> str:
+    os.makedirs("outputs", exist_ok=True)
+    path = OUTPUT_JSON
+    if not path or not path.strip():
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = os.path.join("outputs", f"language_agent_{ts}.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+    return path
+
+def main():
+    email_text = _read_text()
+    agent = LanguageAnalysisAgent(
+        trained_path=TRAINED_PATH,
+        committee_size=COMMITTEE_SIZE,
+        top_k_strategies=TOP_K_STRATEGIES,
+        temperature=TEMPERATURE,
+        max_tokens=MAX_TOKENS,
+        model_name=OPENAI_MODEL,
+    )
+    result = agent.analyze_email(email_text)
+    out_path = _write_json(result)
+    print(json.dumps(result, ensure_ascii=False))
+    print(f"\nSaved: {out_path}")
+
+if __name__ == "__main__":
+    main()
