@@ -6,3 +6,4 @@ llama-cpp-python>=0.2.90
 openai>=1.40.0
 dotenv
 ddgs
+django-cors-headers

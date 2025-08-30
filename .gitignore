@@ -1,2 +1,5 @@
 .env
 Frontend/node_modules
+Backend/.venv
+Backend/app/__pycache__
+Backend/server/__pycache__
