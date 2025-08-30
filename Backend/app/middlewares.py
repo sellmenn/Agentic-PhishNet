@@ -13,8 +13,8 @@ class PhishNetMiddleware:
     """
     def __init__(self, get_response ):
         self.get_response = get_response
-        agents = (FactModel(), LangModel())
-        O = Orchestrator([.5,.5], agents = agents)
+        agents = [FactModel(), LangModel()] # 2 more agents are added by default, SenderModel and SubjectModel
+        O = Orchestrator([.25,.25, .25, .25], agents = agents)
         self.O = O
 
     def __call__(self, request):

@@ -3,13 +3,16 @@ from src.Util.Email import Email
 from src.Util.Evaluation import Evaluation
 from src.Util.handlers import *
 from concurrent.futures import ThreadPoolExecutor
+from .SenderModel import SenderModel
+from .SubjectModel import SubjectModel
 
 class Orchestrator:
-    def __init__(self, weights: list[float], cutoff=0.4, bias=0.6, agents: tuple[Model] = ()):
+    def __init__(self, weights: list[float], cutoff=0.4, bias=0.6, agents: list[Model] = ()):
         self.weights = weights
         self.cutoff = cutoff
         self.bias = bias
-        self.agents: tuple[Model] = agents
+        self.agents: list[Model] = agents
+        self.agents.extend([SenderModel(), SubjectModel()])
 
         verify_weights(weights)
         if len(agents) != len(weights):
@@ -61,7 +64,8 @@ class Orchestrator:
             final_confidence_score += result["confidence"] * self.weights[idx]
             summary += f"\n{result['agent_type']} : {result['summary']}\n"
             # highlight.extend(result["highlight"])
-            highlight.extend([result["highlight"]])
+            if result['agent_type'] not in ['Subject Analysis Agent', 'Subject Analysis Agent']:
+                highlight.extend([result["highlight"]])
             usage = result["token_usage"]
             prompt_tokens += usage["prompt_tokens"]
             completion_tokens += usage["completion_tokens"]
