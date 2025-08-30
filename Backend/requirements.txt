@@ -2,5 +2,7 @@ Django==5.0.7
 openai>=1.0.0
 requests>=2.25.0
 numpy>=1.21.0
+llama-cpp-python>=0.2.90
+openai>=1.40.0
 dotenv
 ddgs
