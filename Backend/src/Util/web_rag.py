@@ -92,7 +92,7 @@ class WebRetriever:
                     )
         except Exception as e:
             attempt += 1
-            self._log(f"DDG search error (attempt: {attempt}): {e!r}")
+            self._log(f"DDG search error for {query[:20]}... (attempt: {attempt}): {e!r}")
             if attempt > self.retries:
                 return [] 
             time.sleep(self.backoff * (2 ** (attempt - 1)))
